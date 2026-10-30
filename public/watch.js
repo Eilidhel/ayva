@@ -325,11 +325,13 @@ function handleOffer(sdp) {
       video.play().catch(function () {
         // Not even muted (e.g. iPhone in Low Power Mode): needs a tap.
         $('playBtn').hidden = false;
+        showVideo();
       });
     });
-    // Tracks arrive with the offer, long before the connection is up. Until
-    // then keep "Connecting to the stream…" on screen instead of a black picture.
-    if (pc.connectionState === 'connected' || pc.connectionState === undefined) showVideo();
+    // Tracks arrive with the offer, long before any frame. The picture is
+    // shown when it starts playing (see the "playing" listener); until then
+    // "Connecting to the stream…" stays up instead of a black screen.
+    if (pc.connectionState === undefined) showVideo();
     updateExtras();
   };
 
@@ -345,7 +347,6 @@ function handleOffer(sdp) {
 
   pc.onconnectionstatechange = function () {
     updateExtras();
-    if (pc && pc.connectionState === 'connected') showVideo();
     if (pc && pc.connectionState === 'failed') {
       showWaiting(t('peerFailed'));
       // If the server connection dropped meanwhile, we're no longer in the
@@ -356,6 +357,7 @@ function handleOffer(sdp) {
   };
 
   showWaiting(t('connectingPeer'));
+  offerAt = Date.now();
   var current = pc;
   pc.setRemoteDescription(sdp)
     .then(function () {
@@ -527,6 +529,44 @@ function handleHostSignal(data) {
     Mic.handle(data);
   }
 }
+
+// ---- Connection details on the waiting screen ----
+// When the picture takes more than a few seconds, show what the connection is
+// doing, so a screenshot says where it is stuck.
+
+var offerAt = 0;
+
+$('video').addEventListener('playing', function () {
+  if (pc) showVideo();
+});
+
+setInterval(function () {
+  var detail = $('waitingDetail');
+  if (!pc || $('waiting').classList.contains('hidden') || Date.now() - offerAt < 6000) {
+    detail.textContent = '';
+    return;
+  }
+  var peer = pc;
+  peer.getStats().then(function (report) {
+    var local = {};
+    var remote = 0;
+    var pairs = {};
+    report.forEach(function (r) {
+      if (r.type === 'local-candidate') local[r.candidateType] = (local[r.candidateType] || 0) + 1;
+      else if (r.type === 'remote-candidate') remote++;
+      else if (r.type === 'candidate-pair') pairs[r.state] = (pairs[r.state] || 0) + 1;
+    });
+    var video = $('video');
+    var parts = [
+      'peer ' + peer.connectionState + ' / ice ' + peer.iceConnectionState,
+      'local ' + (Object.keys(local).map(function (k) { return k + ' ' + local[k]; }).join(', ') || 'none'),
+      'remote ' + remote,
+      'pairs ' + (Object.keys(pairs).map(function (k) { return k + ' ' + pairs[k]; }).join(', ') || 'none'),
+      'video ' + video.readyState + (video.paused ? ' paused' : ' playing') + ' ' + video.videoWidth + 'x' + video.videoHeight,
+    ];
+    if (pc === peer) detail.textContent = parts.join(' · ');
+  }).catch(function () {});
+}, 2000);
 
 function requestWakeLock() {
   if (!navigator.wakeLock || wakeLock) return;
