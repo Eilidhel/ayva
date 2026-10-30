@@ -27,7 +27,7 @@ Download both files from the [Releases](../../releases) page.
 
 You can also use the **Send files to TV** app or `adb install Ayva-Android.apk`.
 
-**Android phone (recommended):** open the Releases page on the phone, download `Ayva-Android.apk` (the same app as the TV), open it and allow installing from your browser. At home the app finds the computer by itself; for away from home, tap **+ Add fixed address** and paste the fixed address once. The app keeps the phone's [device key](#security) in the Android Keystore, and handles the microphone, sending files and saving recordings.
+**Android phone (recommended):** open the Releases page on the phone, download `Ayva-Android.apk` (the same app as the TV), open it and allow installing from your browser. At home the app finds the computer by itself. For away from home, tap **📷 Scan the QR code** and scan the code shown in Ayva on the computer (the phone's own camera app would open it in the browser instead), or tap **+ Add fixed address** and paste the address. The fixed address is kept for next time. The app keeps the phone's [device key](#security) in the Android Keystore, and handles the microphone, sending files and saving recordings.
 
 **iPhone / iPad:** Apple does not allow installing apps from outside the App Store, so Ayva runs in Safari. Open the **fixed address** in Safari, then tap **Share → Add to Home Screen**. Ayva then gets its own icon and opens full screen like an app, with its own storage (clearing Safari's history does not remove its device key). The microphone works there too.
 

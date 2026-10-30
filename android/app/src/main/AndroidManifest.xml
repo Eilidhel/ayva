@@ -8,12 +8,15 @@
     <!-- "Talk": the phone's microphone to the computer's speakers; asked for on first use -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Scanning the QR code shown on the computer; asked for on first use -->
+    <uses-permission android:name="android.permission.CAMERA" />
     <!-- Installs its own updates from GitHub Releases, after Android asks -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Runs on TVs, set-top boxes, phones and tablets -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
     <application
@@ -47,6 +50,11 @@
             android:name=".PlayerActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation" />
+
+        <activity
+            android:name=".ScanActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <receiver
             android:name=".UpdateReceiver"

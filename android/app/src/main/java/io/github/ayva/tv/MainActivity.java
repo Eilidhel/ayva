@@ -8,6 +8,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
@@ -52,6 +53,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
     private static final int MUTED = 0xFFA89F8C;
     private static final int LIVE_BG = 0xFF3A2418;
     private static final long AUTO_CONNECT_WINDOW_MS = 4000;
+    private static final int SCAN = 1;
 
     private Discovery discovery;
     private Updater updater;
@@ -253,6 +255,22 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         openUrl(data.toString());
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != SCAN || resultCode != RESULT_OK || data == null) return;
+        String text = data.getStringExtra(ScanActivity.EXTRA_TEXT);
+        Uri u = text == null ? null : Uri.parse(text.trim());
+        // Only the links Ayva shows: the fixed address and internet links.
+        String host = u == null ? null : u.getHost();
+        if (u == null || !"https".equals(u.getScheme()) || host == null
+                || !(host.endsWith(".workers.dev") || host.endsWith(".trycloudflare.com"))) {
+            Toast.makeText(this, R.string.scan_not_ayva, Toast.LENGTH_LONG).show();
+            return;
+        }
+        handleLink(new Intent(Intent.ACTION_VIEW, u));
+    }
+
     private List<String> addresses() {
         List<String> out = new ArrayList<>();
         for (String a : prefs().getString("addresses", "").split("\n")) {
@@ -275,6 +293,10 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
     }
 
     private void addAddressButtons() {
+        if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+            list.addView(hostButton(getString(R.string.scan_qr), false,
+                    v -> startActivityForResult(new Intent(this, ScanActivity.class), SCAN)));
+        }
         for (final String address : addresses()) {
             final String host = Uri.parse(address).getHost();
             Button b = hostButton("🌐  " + host, false, v -> openUrl(address));

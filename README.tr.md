@@ -25,7 +25,7 @@ Bilgisayarda Ayva'yı aç ve **Paylaşımı başlat**a bas. TV uygulaması bilgi
 2. Bir dosya yöneticisiyle aç. Yoksa Google Play'den **File Commander** ya da **X-plore** kur.
 3. Sorulduğunda bu kaynaktan uygulama yüklenmesine izin ver.
 
-**Android telefon (önerilen):** Releases sayfasını telefonda aç, `Ayva-Android.apk` dosyasını indir (TV'dekiyle aynı uygulama), aç ve tarayıcından uygulama yüklenmesine izin ver. Evde uygulama bilgisayarı kendisi bulur. Dışarısı için **+ Sabit adres ekle**'ye dokunup sabit adresi bir kez yapıştır. Uygulama telefonun [cihaz anahtarını](#güvenlik) Android'in güvenli kasasında (Keystore) tutar; mikrofonu, dosya göndermeyi ve kayıtları kaydetmeyi de halleder.
+**Android telefon (önerilen):** Releases sayfasını telefonda aç, `Ayva-Android.apk` dosyasını indir (TV'dekiyle aynı uygulama), aç ve tarayıcından uygulama yüklenmesine izin ver. Evde uygulama bilgisayarı kendisi bulur. Dışarısı için **📷 QR kodu tara**'ya dokunup bilgisayardaki Ayva'da görünen kodu tara (telefonun kendi kamerası kodu tarayıcıda açar), ya da **+ Sabit adres ekle**'ye dokunup adresi yapıştır. Sabit adres bir sonraki sefer için saklanır. Uygulama telefonun [cihaz anahtarını](#güvenlik) Android'in güvenli kasasında (Keystore) tutar; mikrofonu, dosya göndermeyi ve kayıtları kaydetmeyi de halleder.
 
 **iPhone / iPad:** Apple, App Store dışından uygulama kurulmasına izin vermediği için Ayva Safari'de çalışır. **Sabit adresi** Safari'de aç, sonra **Paylaş → Ana Ekrana Ekle**'ye dokun. Ayva'nın kendi simgesi olur ve uygulama gibi tam ekran açılır. Kendine ait bir hafızası olur, yani Safari geçmişini silmek cihaz anahtarını silmez. Mikrofon da orada çalışır.
 

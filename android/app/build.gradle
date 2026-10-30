@@ -46,3 +46,8 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 }
+
+dependencies {
+    // QR decoding only (pure Java, no Google Play services), for ScanActivity.
+    implementation 'com.google.zxing:core:3.5.3'
+}

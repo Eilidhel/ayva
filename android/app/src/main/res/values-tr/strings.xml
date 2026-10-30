@@ -23,4 +23,9 @@
     <string name="version_checking">Ayva %1$s · Denetleniyor…</string>
     <string name="version_latest">Ayva %1$s · Güncel</string>
     <string name="version_check_failed">Ayva %1$s · Güncelleme denetlenemedi</string>
+    <string name="scan_qr">📷  QR kodu tara</string>
+    <string name="scan_hint">Kamerayı bilgisayardaki Ayva\'da görünen QR koda tut.</string>
+    <string name="scan_not_ayva">Bu QR kod bir Ayva linki değil.</string>
+    <string name="camera_denied">QR kodu taramak için Ayva\'nın kameraya erişmesine izin ver.</string>
+    <string name="camera_failed">Kamera açılamadı.</string>
 </resources>
