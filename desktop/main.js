@@ -13,6 +13,7 @@ const { start } = require('../server');
 const input = require('./input');
 const { Tunnel } = require('./tunnel');
 const { Cloud } = require('./cloud');
+const { Turn } = require('./turn');
 const { Receiver } = require('./files');
 const { Updater } = require('./updater');
 
@@ -199,6 +200,46 @@ ipcMain.handle('cloud-remove', async (event) => {
   if (!fromOurWindow(event)) return false;
   await cloud.remove();
   return true;
+});
+
+// ---- Backup route (Cloudflare TURN in the user's account, see turn.js) ----
+
+let turn = null;
+
+ipcMain.handle('turn-status', () => (turn ? turn.status() : { configured: false }));
+
+ipcMain.handle('turn-setup', async (event, keyId, apiToken) => {
+  if (!fromOurWindow(event)) return { error: 'denied' };
+  try {
+    return { status: await turn.setup(keyId, apiToken) };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle('turn-remove', (event) => {
+  if (!fromOurWindow(event)) return false;
+  turn.remove();
+  return true;
+});
+
+ipcMain.handle('turn-credentials', async (event, ttl) => {
+  if (!fromOurWindow(event)) return null;
+  try {
+    return await turn.credentials(ttl);
+  } catch (err) {
+    return null;
+  }
+});
+
+ipcMain.handle('turn-revoke', async (event, username) => {
+  if (!fromOurWindow(event)) return false;
+  try {
+    await turn.revoke(username);
+    return true;
+  } catch (err) {
+    return false;
+  }
 });
 
 // ---- Internet access ----
@@ -442,6 +483,7 @@ app.whenReady().then(async () => {
     return;
   }
   cloud = new Cloud(app.getPath('userData'), path.join(__dirname, '..', 'public'), app.getVersion());
+  turn = new Turn(app.getPath('userData'));
   // Keep the pages at the fixed address in step with this version of Ayva.
   cloud.updateIfNeeded().catch(() => {});
   createWindow(server.port);

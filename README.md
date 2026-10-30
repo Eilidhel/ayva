@@ -58,13 +58,61 @@ Ayva then shows a `https://….trycloudflare.com` link and a **QR code**. Scan i
 
 Cloudflare offers these quick tunnels free of charge but meant for testing, with no uptime guarantee.
 
-**If the picture never arrives** ("Connecting to the stream…"), the two networks cannot reach each other directly. This happens on some mobile and corporate networks. A **TURN** relay fixes it (see [Configuration](#configuration)).
+**If the picture never arrives** ("Connecting to the stream…"), the two networks cannot reach each other directly. This happens on some mobile and corporate networks. The [backup route](#backup-route-cloudflare-turn) fixes it.
 
 ## Fixed address (Cloudflare, free)
 
 Press **Set up a fixed address (Cloudflare)** in Ayva and follow the steps: on a free Cloudflare account, create an API token from the "Edit Cloudflare Workers" template, paste it into Ayva and choose a viewing password. Ayva deploys itself to your account and gives you a link like `https://ayva.<name>.workers.dev`, with a QR code, that **never changes**. A phone enters the password once and then connects with the same link every time.
 
 **Phone stuck on "Connecting to server…":** some internet providers block `workers.dev` addresses. In Chrome choose **⋮ → Settings → Privacy and security → Use secure DNS → Choose another provider → Cloudflare (1.1.1.1)** and reopen the page. (The Ayva app does this on the computer by itself.)
+
+## Backup route (Cloudflare TURN)
+
+Normally the picture goes straight from your computer to the phone. Some networks don't allow that, and the phone then stays on **Connecting to the stream…**. The backup route sends the picture through a relay in your own free Cloudflare account instead, only for those connections.
+
+### When it helps
+
+| Situation | Without the backup route | With it |
+| --- | --- | --- |
+| Same Wi-Fi at home | Works | Not used |
+| Most home internet and mobile data | Works directly | Not used |
+| Mobile operators that put many users behind one address (CGNAT) | Often stuck | Works |
+| Work, school, hotel, café and hospital Wi-Fi that blocks UDP | Stuck | Works: the relay can also go over port 443, like an ordinary https site |
+| Networks that block Cloudflare entirely, or only allow a few sites | Stuck | Still stuck |
+| This month's limit reached (see below) | | Off until next month |
+
+The relay adds very little delay because Cloudflare has servers close to both ends. Remote control may feel slightly slower.
+
+### What it costs
+
+Cloudflare gives **1,000 GB a month free**, then charges $0.05 per GB ([pricing](https://developers.cloudflare.com/realtime/sfu/pricing/)). Only traffic that actually goes through the relay counts; devices that connect directly use none. As a guide, 1080p 60 FPS is about 4–5 GB an hour, and 720p about 1.5–2 GB an hour.
+
+Ayva counts what goes over the relay and **stops using it at a monthly limit you choose (800 GB by default)**, so it stays inside the free allowance. Ayva's count is an estimate; the exact figure is in the Cloudflare dashboard under Realtime → TURN Server → Analytics.
+
+### Setting it up (about 3 minutes)
+
+The backup route is separate from the fixed address. It works with the fixed address and with internet links, but you need a Cloudflare account either way (the free plan is enough).
+
+1. Sign in at [dash.cloudflare.com](https://dash.cloudflare.com) (or create a free account).
+2. In the menu, open **Realtime** (on some accounts **Calls**), then **TURN Server**, and press **Create** (or **Create TURN Key**). Any name will do, for example `ayva`.
+3. Cloudflare shows two values: **Turn Token ID** and **API Token**. The API Token is shown **only once**, so keep the page open.
+4. In Ayva, open **Backup route (Cloudflare TURN)** under the code, paste both values and press **Turn on**. Ayva checks them with Cloudflare before keeping them.
+
+To turn it off, press **Turn off the backup route** in Ayva. To make the key useless everywhere, also delete it in the Cloudflare dashboard.
+
+### Settings
+
+- **Monthly limit (GB):** when this much has gone over the relay in a calendar month, Ayva stops handing it out and tells you. It starts again next month, or when you raise the limit.
+- **Hide this computer's IP address:** with a direct connection, the viewing device can see your home's IP address, which reveals roughly where you are and your internet provider. With this ticked, devices over the internet always connect through the relay and only see Cloudflare's address. It uses the allowance for every internet connection, not just the difficult ones.
+
+While a device is using the relay, **Connected devices** shows **backup route** next to it.
+
+### Security
+
+- **The picture stays private.** Video, sound and control are end-to-end encrypted by WebRTC. The relay only passes on encrypted packets; Cloudflare cannot see what you share. It can see which addresses connect, when, and how much data passes.
+- **The key never leaves this computer.** The API Token is stored encrypted with Windows' own data protection (DPAPI) and is never sent to a page, a phone or the fixed address. Ayva uses it only to ask Cloudflare for short-lived credentials.
+- **Each device gets its own credentials, only after you let it in.** Only devices connecting over the internet get them, and only after approval and their [device key](#security) check. Devices on your home network never get them. Credentials last 4 hours and are renewed while the device watches; they are **revoked as soon as the device leaves** or you disconnect it.
+- **Worst case.** If someone copied a device's credentials, they could only use the relay (not see your screen or reach your computer), until the credentials are revoked or expire, and never beyond your monthly limit. If you think the API Token itself leaked (it would take access to your computer), delete the key in the Cloudflare dashboard and create a new one.
 
 ## Remote control
 
@@ -145,7 +193,7 @@ Environment variables for `server.js` (also read by the desktop app):
 | `TURN_USER` / `TURN_PASS` | none | TURN credentials |
 | `ICE_SERVERS` | Google STUN | Full ICE server list as JSON (overrides the TURN variables) |
 
-Run your own TURN server with [coturn](https://github.com/coturn/coturn) or use a hosted one.
+These are for running the server on its own, or for your own TURN server ([coturn](https://github.com/coturn/coturn) or a hosted one). In the desktop app, the [backup route](#backup-route-cloudflare-turn) is the simpler way.
 
 ## Tips and limits
 

@@ -33,6 +33,12 @@ contextBridge.exposeInMainWorld('ayva', {
   cloudRemove: () => ipcRenderer.invoke('cloud-remove'),
   onCloudProgress: (fn) => ipcRenderer.on('cloud-progress', (_e, step) => fn(step)),
 
+  turnStatus: () => ipcRenderer.invoke('turn-status'),
+  turnSetup: (keyId, apiToken) => ipcRenderer.invoke('turn-setup', keyId, apiToken),
+  turnRemove: () => ipcRenderer.invoke('turn-remove'),
+  turnCredentials: (ttl) => ipcRenderer.invoke('turn-credentials', ttl),
+  turnRevoke: (username) => ipcRenderer.invoke('turn-revoke', username),
+
   getStartWithWindows: () => ipcRenderer.invoke('get-start-with-windows'),
   setStartWithWindows: (on) => ipcRenderer.invoke('set-start-with-windows', on),
 });

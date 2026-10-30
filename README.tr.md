@@ -56,13 +56,61 @@ Ardından Ayva bir `https://….trycloudflare.com` linki ve **QR kod** gösterir
 
 Cloudflare bu hızlı tünelleri ücretsiz ama test amaçlı sunuyor. Kesintisiz çalışma garantisi yok.
 
-**Görüntü hiç gelmezse** ("Yayına bağlanılıyor…"da kalırsa), iki ağ birbirine doğrudan ulaşamıyor demektir. Bazı mobil operatörlerde ve şirket ağlarında bu olabilir. Çözümü bir **TURN** aktarma sunucusu (bkz. [README.md](README.md#configuration)).
+**Görüntü hiç gelmezse** ("Yayına bağlanılıyor…"da kalırsa), iki ağ birbirine doğrudan ulaşamıyor demektir. Bazı mobil operatörlerde ve şirket ağlarında bu olabilir. Çözümü [yedek yol](#yedek-yol-cloudflare-turn).
 
 ## Sabit adres (Cloudflare, ücretsiz)
 
 Ayva'da **Sabit adres kur (Cloudflare)**'a bas ve penceredeki adımları izle: ücretsiz bir Cloudflare hesabında "Edit Cloudflare Workers" şablonuyla bir API anahtarı oluşturup Ayva'ya yapıştır, bir izleme şifresi belirle. Ayva kendini hesabına yükler ve `https://ayva.<adın>.workers.dev` gibi **hiç değişmeyen** bir link ve QR kod verir. Telefon bir kez şifre girer, sonra her seferinde aynı linkten bağlanır.
 
 **Telefon "Sunucuya bağlanılıyor"da kalıyorsa:** bazı internet sağlayıcıları `workers.dev` adreslerini engelliyor. Chrome'da **⋮ → Ayarlar → Gizlilik ve güvenlik → Güvenli DNS kullan → Başka bir sağlayıcı seçin → Cloudflare (1.1.1.1)** seç ve sayfayı yeniden aç. (Ayva programı bunu bilgisayarda kendisi yapıyor.)
+
+## Yedek yol (Cloudflare TURN)
+
+Normalde görüntü bilgisayardan telefona doğrudan gider. Bazı ağlar buna izin vermez ve telefon **Yayına bağlanılıyor…** ekranında kalır. Yedek yol, sadece bu bağlantılarda görüntüyü senin ücretsiz Cloudflare hesabındaki bir aktarma sunucusu üzerinden gönderir.
+
+### Ne zaman işe yarar
+
+| Durum | Yedek yol olmadan | Yedek yolla |
+| --- | --- | --- |
+| Evde aynı Wi-Fi | Çalışır | Kullanılmaz |
+| Çoğu ev interneti ve mobil veri | Doğrudan çalışır | Kullanılmaz |
+| Çok kullanıcıyı tek adresin arkasına koyan mobil operatörler (CGNAT) | Çoğu zaman takılır | Çalışır |
+| UDP'yi engelleyen iş, okul, otel, kafe ve hastane Wi-Fi'ları | Takılır | Çalışır: aktarma, sıradan bir https sitesi gibi 443 portundan da geçebilir |
+| Cloudflare'i tamamen engelleyen ya da sadece birkaç siteye izin veren ağlar | Takılır | Yine takılır |
+| Bu ayın sınırı dolduysa (aşağıya bak) | | Gelecek aya kadar kapalı |
+
+Cloudflare'in sunucuları iki tarafa da yakın olduğu için aktarma çok az gecikme ekler. Uzaktan kontrol biraz daha yavaş hissedilebilir.
+
+### Ücreti
+
+Cloudflare her ay **1.000 GB'ı ücretsiz** verir, sonrası GB başına 0,05 $'dır ([fiyatlar](https://developers.cloudflare.com/realtime/sfu/pricing/)). Sadece gerçekten aktarmadan geçen veri sayılır; doğrudan bağlanan cihazlar hiç harcamaz. Kabaca 1080p 60 FPS saatte 4–5 GB, 720p saatte 1,5–2 GB tutar.
+
+Ayva aktarmadan geçen veriyi sayar ve **senin seçtiğin aylık sınırda (varsayılan 800 GB) yedek yolu kullanmayı bırakır**, böylece ücretsiz kotanın içinde kalırsın. Ayva'nın saydığı bir tahmindir; kesin miktar Cloudflare panelinde Realtime → TURN Server → Analytics altındadır.
+
+### Kurulum (yaklaşık 3 dakika)
+
+Yedek yol sabit adresten ayrıdır. Hem sabit adresle hem internet linkiyle çalışır, ama her iki durumda da bir Cloudflare hesabı gerekir (ücretsiz plan yeterli).
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) adresinde oturum aç (ya da ücretsiz hesap aç).
+2. Menüde **Realtime**'ı (bazı hesaplarda **Calls**), ardından **TURN Server**'ı aç ve **Create**'e (ya da **Create TURN Key**'e) bas. İsim olarak herhangi bir şey yazabilirsin, ör. `ayva`.
+3. Cloudflare iki değer gösterir: **Turn Token ID** ve **API Token**. API Token **sadece bir kez** gösterilir, sayfayı kapatma.
+4. Ayva'da kodun altındaki **Yedek yol (Cloudflare TURN)** bölümünü aç, iki değeri yapıştır ve **Aç**'a bas. Ayva bunları saklamadan önce Cloudflare'de kontrol eder.
+
+Kapatmak için Ayva'da **Yedek yolu kapat**'a bas. Anahtarı her yerde geçersiz kılmak için Cloudflare panelinden de sil.
+
+### Ayarlar
+
+- **Aylık sınır (GB):** bir takvim ayında aktarmadan bu kadar veri geçince Ayva yedek yolu vermeyi bırakır ve sana haber verir. Gelecek ay ya da sınırı yükseltince yeniden başlar.
+- **Bu bilgisayarın IP adresini gizle:** doğrudan bağlantıda izleyen cihaz evinin IP adresini görebilir; bu, kabaca nerede olduğunu ve internet sağlayıcını ortaya çıkarır. Bu seçenek işaretliyse internetten bağlanan cihazlar her zaman aktarma üzerinden bağlanır ve sadece Cloudflare'in adresini görür. Bu durumda kota sadece zor bağlantılarda değil, her internet bağlantısında harcanır.
+
+Bir cihaz aktarmayı kullanırken **Bağlı cihazlar** listesinde yanında **yedek yol** yazar.
+
+### Güvenlik
+
+- **Görüntü gizli kalır.** Görüntü, ses ve kontrol WebRTC ile uçtan uca şifrelidir. Aktarma sadece şifreli paketleri iletir; Cloudflare ne paylaştığını göremez. Hangi adreslerin ne zaman bağlandığını ve ne kadar veri geçtiğini görebilir.
+- **Anahtar bu bilgisayardan çıkmaz.** API Token, Windows'un kendi veri korumasıyla (DPAPI) şifreli saklanır; hiçbir sayfaya, telefona ya da sabit adrese gönderilmez. Ayva onu sadece Cloudflare'den kısa süreli giriş bilgisi almak için kullanır.
+- **Her cihaz, sen içeri aldıktan sonra kendi giriş bilgisini alır.** Bunları sadece internetten bağlanan cihazlar alır, o da onaydan ve [cihaz anahtarı](#güvenlik) kontrolünden sonra. Ev ağındaki cihazlar hiç almaz. Giriş bilgileri 4 saat geçerlidir, cihaz izledikçe yenilenir ve **cihaz ayrılır ayrılmaz** ya da bağlantısını kestiğin anda iptal edilir.
+- **En kötü durum.** Biri bir cihazın giriş bilgisini kopyalasa bile sadece aktarmayı kullanabilir (ekranını göremez, bilgisayarına ulaşamaz); bu da bilgi iptal edilene ya da süresi dolana kadar ve hiçbir zaman aylık sınırını aşmadan olur. API Token'ın kendisinin sızdığından şüphelenirsen (bunun için bilgisayarına erişmiş olmak gerekir) anahtarı Cloudflare panelinden sil ve yenisini oluştur.
 
 ## Uzaktan kontrol
 

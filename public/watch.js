@@ -58,6 +58,11 @@ function stopWebAudio() {
 
 var config = null;
 var signal = null;
+var turnIce = []; // backup-route servers from the computer (viewers over the internet)
+
+function iceConfig() {
+  return { iceServers: config.iceServers.concat(turnIce) };
+}
 var pc = null;
 var CLOUD = false; // opened at the fixed (Cloudflare) address: see cloud.js
 var code = null; // room code, or in cloud mode the chosen computer's id
@@ -289,7 +294,7 @@ function showFinal(text) {
 
 function handleOffer(sdp) {
   closePeer(); // also clears video.srcObject, so the new tracks start fresh
-  pc = new RTCPeerConnection({ iceServers: config.iceServers });
+  pc = new RTCPeerConnection(iceConfig());
   updateRemoteStart();
 
   pc.ontrack = function (e) {
@@ -501,6 +506,12 @@ function handleHostSignal(data) {
   } else if (data.kind === 'stopped') {
     closePeer();
     showWaiting(t('waitingHost'));
+  } else if (data.kind === 'ice') {
+    // Comes before the offer, and again when the credentials are renewed.
+    turnIce = Array.isArray(data.iceServers) ? data.iceServers.slice(0, 4) : [];
+    if (pc) {
+      try { pc.setConfiguration(iceConfig()); } catch (e) { /* kept the old ones */ }
+    }
   } else if (data.kind === 'prove') {
     proveDevice(data.nonce);
   } else if (data.kind === 'caps') {
@@ -677,6 +688,7 @@ loadConfig().then(function (cfg) {
         joined = false;
         canRemoteStart = false; // the computer says again once it is back
         pinSalt = null;
+        turnIce = [];
         closePeer();
         showWaiting(t('hostGone'));
         retryJoin();

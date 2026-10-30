@@ -176,7 +176,12 @@ select {
 .device .tag.alert { color: var(--live); }
 .approval-box { width: min(440px, 100%); }
 
-#historyBox summary { cursor: pointer; }
+#historyBox summary, #turn summary { cursor: pointer; }
+.turn-form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.turn-form .rename-input { flex: 1 1 200px; }
+#turnSettings { display: grid; gap: 8px; margin-top: 8px; justify-items: start; }
+#turnSettings[hidden] { display: none; }
+.turn-limit { flex: none; width: 90px; }
 .history { max-height: 320px; overflow-y: auto; margin: 8px 0; }
 .history-row {
   display: flex;

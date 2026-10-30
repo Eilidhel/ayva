@@ -52,6 +52,29 @@
         </div>
       </div>
 
+      <!-- Backup route: Cloudflare TURN in the user's account (desktop app only) -->
+      <details id="turn" class="internet" hidden>
+        <summary class="muted small"><span data-i18n="turnTitle"></span> · <span id="turnState"></span></summary>
+        <div class="muted small" style="margin-top:8px" id="turnInfo"></div>
+        <form id="turnForm" class="turn-form" hidden>
+          <input id="turnKeyId" class="rename-input" autocomplete="off" spellcheck="false">
+          <input id="turnToken" class="rename-input" type="password" autocomplete="off">
+          <button id="turnSaveBtn" type="submit" class="small-btn" data-i18n="turnSave"></button>
+        </form>
+        <div id="turnSettings" hidden>
+          <label class="row small">
+            <input id="turnHideIp" type="checkbox">
+            <span data-i18n="turnHideIp"></span>
+          </label>
+          <label class="row small">
+            <span data-i18n="turnLimit"></span>
+            <input id="turnLimit" class="rename-input turn-limit" type="number" min="1" max="100000" step="1">
+          </label>
+          <button id="turnRemoveBtn" class="secondary small-btn" data-i18n="turnRemove"></button>
+        </div>
+        <div id="turnError" class="status small"></div>
+      </details>
+
       <!-- Internet access (desktop app only) -->
       <div id="internet" class="internet" hidden>
         <div class="row">

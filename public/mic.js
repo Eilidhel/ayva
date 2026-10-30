@@ -37,7 +37,7 @@ var Mic = (function () {
         return;
       }
       stream = s;
-      var peer = new RTCPeerConnection({ iceServers: config.iceServers });
+      var peer = new RTCPeerConnection(iceConfig());
       mpc = peer;
       s.getAudioTracks().forEach(function (track) { peer.addTrack(track, s); });
       peer.onicecandidate = function (e) {

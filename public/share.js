@@ -344,12 +344,22 @@ function applyBitrate(pc) {
   });
 }
 
+var connectSeq = {}; // viewer id -> latest connectViewer call, so a slow one is dropped
+
 function connectViewer(id) {
   closePeer(id);
   if (!stream) return;
+  var seq = connectSeq[id] = (connectSeq[id] || 0) + 1;
+  // Viewers over the internet first get their backup-route credentials.
+  turnFor(id).then(function (creds) {
+    if (connectSeq[id] === seq && stream && viewerInfo[id]) openPeer(id, creds);
+  });
+}
 
-  var pc = new RTCPeerConnection({ iceServers: config.iceServers });
+function openPeer(id, creds) {
+  var pc = new RTCPeerConnection(peerConfig(creds));
   viewers[id] = pc;
+  if (creds) sendIce(id, creds);
 
   // Audio and video go out as separate streams so the TV doesn't lip-sync
   // them: on a slow decoder, syncing makes it stretch the sound to wait for
@@ -391,6 +401,7 @@ function sampleSenders() {
     var peer = viewers[id];
     if (!peer || peer.connectionState !== 'connected') return;
     peer.getStats().then(function (report) {
+      countRelay(id, report);
       var now = { out: null, source: null, codecs: {} };
       report.forEach(function (r) {
         if (r.type === 'outbound-rtp' && r.kind === 'video') now.out = r;
@@ -838,6 +849,7 @@ function renderDevices() {
     if (!controlOn && controlAllowed(id)) tags.push({ text: t('controlTag'), cls: 'alert' });
     if (info.recording) tags.push({ text: t('recordingTag'), cls: 'alert' });
     if (mics[id]) tags.push({ text: t('talkingTag'), cls: 'alert' });
+    if (info.relayed) tags.push({ text: t('relayTag'), cls: 'net' });
     list.appendChild(deviceRow(deviceLabel(info), tags, t('kick'), function () { kick(id); }, info.deviceId));
   });
 
@@ -1101,7 +1113,7 @@ function micOffer(id, sdp) {
     return;
   }
   logEvent('talking', viewerInfo[id]);
-  var pc = new RTCPeerConnection({ iceServers: config.iceServers });
+  var pc = new RTCPeerConnection(peerConfig(turnCreds[id]));
   var audio = new Audio();
   audio.autoplay = true;
   mics[id] = { pc: pc, audio: audio };
@@ -1499,6 +1511,8 @@ function signalingLost(id) {
 function viewerLeft(id) {
   var info = viewerInfo[id];
   if (info) logEvent('left', info, Date.now() - info.joinedAt);
+  dropTurn(id);
+  delete connectSeq[id];
   delete orphaned[id];
   dropRequest(id);
   closeMic(id);
@@ -1558,6 +1572,189 @@ function viewerAdmitted(msg, sig, nonce) {
   connectViewer(msg.id);
   sendCaps(msg.id);
   applyControl();
+}
+
+// ---- Backup route (Cloudflare TURN) ----
+// Only for viewers coming over the internet, and only when a TURN key is set
+// up in the desktop app (desktop/turn.js keeps the key). Each such viewer gets
+// its own short-lived credentials, renewed before they run out and revoked
+// when it leaves. What goes over the relay is counted against a monthly limit,
+// so the free allowance is never exceeded by Ayva.
+
+var TURN_TTL_S = 4 * 3600;
+var TURN_RENEW_MS = 3 * 3600 * 1000;
+var turnReady = false;
+var turnCreds = {}; // viewer id -> { iceServers, username, timer }
+var relayBytes = {}; // viewer id -> { pair, bytes } last counted on a relayed path
+var turnHideIp = storageGet('ayva-turn-hide-ip') === '1';
+var turnLimitGb = Number(storageGet('ayva-turn-limit')) || 800;
+var turnUsage = loadTurnUsage();
+
+function thisMonth() {
+  var d = new Date();
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+}
+
+function loadTurnUsage() {
+  try {
+    var u = JSON.parse(storageGet('ayva-turn-usage') || 'null');
+    if (u && u.month === thisMonth() && typeof u.bytes === 'number') return u;
+  } catch (e) { /* start over */ }
+  return { month: thisMonth(), bytes: 0 };
+}
+
+function turnFull() {
+  if (turnUsage.month !== thisMonth()) turnUsage = { month: thisMonth(), bytes: 0 };
+  return turnUsage.bytes >= turnLimitGb * 1e9;
+}
+
+function turnFor(id) {
+  var info = viewerInfo[id];
+  if (!turnReady || !info || !info.remote || turnFull()) return Promise.resolve(null);
+  if (turnCreds[id]) return Promise.resolve(turnCreds[id]);
+  return window.ayva.turnCredentials(TURN_TTL_S).then(function (c) {
+    if (!c || !Array.isArray(c.iceServers)) return null;
+    if (!viewerInfo[id] || turnCreds[id]) {
+      window.ayva.turnRevoke(c.username);
+      return turnCreds[id] || null;
+    }
+    c.timer = setTimeout(function () { renewTurn(id); }, TURN_RENEW_MS);
+    turnCreds[id] = c;
+    return c;
+  }).catch(function () { return null; });
+}
+
+// New credentials before the old ones run out; the old ones are revoked once
+// both ends have moved over.
+function renewTurn(id) {
+  var old = turnCreds[id];
+  if (!old) return;
+  delete turnCreds[id];
+  turnFor(id).then(function (c) {
+    if (c) {
+      if (viewers[id]) viewers[id].setConfiguration(peerConfig(c));
+      sendIce(id, c);
+    }
+    setTimeout(function () { window.ayva.turnRevoke(old.username); }, 60000);
+  });
+}
+
+function dropTurn(id) {
+  var c = turnCreds[id];
+  delete turnCreds[id];
+  delete relayBytes[id];
+  if (!c) return;
+  clearTimeout(c.timer);
+  window.ayva.turnRevoke(c.username);
+}
+
+function peerConfig(creds) {
+  var cfg = { iceServers: config.iceServers.concat(creds ? creds.iceServers : []) };
+  // Only relay addresses leave this computer, so the viewer never sees its IP.
+  if (creds && turnHideIp) cfg.iceTransportPolicy = 'relay';
+  return cfg;
+}
+
+function sendIce(id, creds) {
+  viaSignal(id).send({ type: 'signal', to: id, data: { kind: 'ice', iceServers: creds.iceServers } });
+}
+
+// Cloudflare counts what it relays; this counts the same bytes on this side.
+function countRelay(id, report) {
+  var pair = null;
+  report.forEach(function (r) {
+    if (r.type === 'transport' && r.selectedCandidatePairId) pair = report.get(r.selectedCandidatePairId);
+  });
+  var relayed = !!pair && [pair.localCandidateId, pair.remoteCandidateId].some(function (cid) {
+    var c = report.get(cid);
+    return !!c && c.candidateType === 'relay';
+  });
+  var info = viewerInfo[id];
+  if (info && !!info.relayed !== relayed) {
+    info.relayed = relayed;
+    renderDevices();
+  }
+  if (!pair) return;
+  var bytes = (pair.bytesSent || 0) + (pair.bytesReceived || 0);
+  var last = relayBytes[id];
+  relayBytes[id] = { pair: pair.id, bytes: bytes };
+  if (relayed && last && last.pair === pair.id && bytes > last.bytes) addTurnUsage(bytes - last.bytes);
+}
+
+function addTurnUsage(bytes) {
+  var wasFull = turnFull();
+  turnUsage.bytes += bytes;
+  storageSet('ayva-turn-usage', JSON.stringify(turnUsage));
+  if (!wasFull && turnFull()) {
+    transferStatus(t('turnLimitTitle'));
+    if (window.ayva && window.ayva.notify) window.ayva.notify(t('turnLimitTitle'), '');
+  }
+  renderTurn();
+}
+
+function gb(bytes) {
+  return (bytes / 1e9).toFixed(bytes < 1e10 ? 1 : 0);
+}
+
+function renderTurn() {
+  $('turnState').textContent = t(!turnReady ? 'turnOff' : turnFull() ? 'turnFull' : 'turnOnShort');
+  $('turnForm').hidden = turnReady;
+  $('turnSettings').hidden = !turnReady;
+  var used = gb(turnUsage.month === thisMonth() ? turnUsage.bytes : 0);
+  $('turnInfo').textContent = !turnReady ? t('turnIntro')
+    : t(turnFull() ? 'turnOverLimit' : 'turnOn').replace('{used}', used).replace('{limit}', turnLimitGb);
+}
+
+if (window.ayva && window.ayva.turnStatus) {
+  $('turn').hidden = false;
+  $('turnKeyId').placeholder = t('turnKeyId');
+  $('turnToken').placeholder = t('turnToken');
+  $('turnHideIp').checked = turnHideIp;
+  $('turnLimit').value = turnLimitGb;
+  window.ayva.turnStatus().then(function (s) {
+    turnReady = !!(s && s.configured);
+    renderTurn();
+  });
+  renderTurn();
+
+  $('turnForm').onsubmit = function (e) {
+    e.preventDefault();
+    $('turnSaveBtn').disabled = true;
+    $('turnError').textContent = t('turnChecking');
+    window.ayva.turnSetup($('turnKeyId').value, $('turnToken').value).then(function (r) {
+      $('turnSaveBtn').disabled = false;
+      $('turnToken').value = '';
+      $('turnError').textContent = r && r.error ? t(r.error) || r.error : '';
+      if (r && r.status) {
+        $('turnKeyId').value = '';
+        turnReady = true;
+        renderTurn();
+      }
+    });
+  };
+
+  $('turnRemoveBtn').onclick = function () {
+    window.ayva.turnRemove().then(function () {
+      turnReady = false;
+      Object.keys(turnCreds).forEach(dropTurn);
+      renderTurn();
+    });
+  };
+
+  // Takes effect for the next connection.
+  $('turnHideIp').onchange = function () {
+    turnHideIp = this.checked;
+    storageSet('ayva-turn-hide-ip', turnHideIp ? '1' : '0');
+  };
+
+  $('turnLimit').onchange = function () {
+    var v = Math.round(Number(this.value));
+    if (!(v >= 1)) v = 800;
+    this.value = v;
+    turnLimitGb = v;
+    storageSet('ayva-turn-limit', String(v));
+    renderTurn();
+  };
 }
 
 // ---- Connection history ----
