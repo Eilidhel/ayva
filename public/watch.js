@@ -536,9 +536,13 @@ function handleHostSignal(data) {
 
 var offerAt = 0;
 
-$('video').addEventListener('playing', function () {
-  if (pc) showVideo();
-});
+// Only once a real frame is there: some WebViews report "playing" before any
+// picture has arrived.
+function showWhenPicture() {
+  if (pc && $('video').videoWidth > 0) showVideo();
+}
+$('video').addEventListener('playing', showWhenPicture);
+$('video').addEventListener('resize', showWhenPicture);
 
 setInterval(function () {
   var detail = $('waitingDetail');
@@ -551,7 +555,9 @@ setInterval(function () {
     var local = {};
     var remote = 0;
     var pairs = {};
+    var inbound = null;
     report.forEach(function (r) {
+      if (r.type === 'inbound-rtp' && r.kind === 'video') inbound = r;
       if (r.type === 'local-candidate') local[r.candidateType] = (local[r.candidateType] || 0) + 1;
       else if (r.type === 'remote-candidate') remote++;
       else if (r.type === 'candidate-pair') pairs[r.state] = (pairs[r.state] || 0) + 1;
@@ -562,6 +568,7 @@ setInterval(function () {
       'local ' + (Object.keys(local).map(function (k) { return k + ' ' + local[k]; }).join(', ') || 'none'),
       'remote ' + remote,
       'pairs ' + (Object.keys(pairs).map(function (k) { return k + ' ' + pairs[k]; }).join(', ') || 'none'),
+      'in ' + (inbound ? Math.round((inbound.bytesReceived || 0) / 1024) + ' KB, ' + (inbound.framesDecoded || 0) + ' frames' : 'none'),
       'video ' + video.readyState + (video.paused ? ' paused' : ' playing') + ' ' + video.videoWidth + 'x' + video.videoHeight,
     ];
     if (pc === peer) detail.textContent = parts.join(' · ');
