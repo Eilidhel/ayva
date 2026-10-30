@@ -2,6 +2,10 @@ plugins {
     id 'com.android.application'
 }
 
+// Keep the TV app version in step with the desktop app (package.json).
+def appVersion = new groovy.json.JsonSlurper().parse(rootProject.file('../package.json')).version
+def appVersionCode = appVersion.tokenize('.').collect { it as int }.inject(0) { acc, n -> acc * 100 + n }
+
 android {
     namespace 'io.github.ayva.tv'
     compileSdk 34
@@ -10,16 +14,30 @@ android {
         applicationId 'io.github.ayva.tv'
         minSdk 21
         targetSdk 34
-        versionCode 3
-        versionName '0.7.0'
+        versionCode appVersionCode
+        versionName appVersion
+    }
+
+    signingConfigs {
+        // CI passes a fixed keystore so every build carries the same signature
+        // and the TV app can be updated in place. Passwords default to the
+        // standard debug keystore values.
+        if (System.getenv('AYVA_KEYSTORE')) {
+            release {
+                storeFile file(System.getenv('AYVA_KEYSTORE'))
+                storePassword System.getenv('AYVA_KEYSTORE_PASSWORD') ?: 'android'
+                keyAlias System.getenv('AYVA_KEY_ALIAS') ?: 'androiddebugkey'
+                keyPassword System.getenv('AYVA_KEY_PASSWORD') ?: 'android'
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            // Signed with the debug key so the APK installs without extra setup.
-            // Use your own keystore if you publish to a store.
-            signingConfig signingConfigs.debug
+            // Without AYVA_KEYSTORE, fall back to the local debug key so the APK
+            // installs without extra setup.
+            signingConfig System.getenv('AYVA_KEYSTORE') ? signingConfigs.release : signingConfigs.debug
         }
     }
 
