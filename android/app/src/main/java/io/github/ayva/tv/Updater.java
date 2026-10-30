@@ -163,7 +163,7 @@ class Updater {
     }
 
     private void download(String url, File to) throws Exception {
-        HttpURLConnection c = open(url);
+        HttpURLConnection c = open(url, "application/octet-stream");
         long total = c.getContentLength();
         try (InputStream in = c.getInputStream(); OutputStream out = new FileOutputStream(to)) {
             copy(in, out, total);
@@ -175,23 +175,26 @@ class Updater {
     private void copy(InputStream in, OutputStream out, long total) throws Exception {
         byte[] buf = new byte[64 * 1024];
         long done = 0;
+        int shown = -1;
         int n;
         while ((n = in.read(buf)) > 0) {
             out.write(buf, 0, n);
             done += n;
             if (total > 0) {
                 final int pct = (int) (done * 100 / total);
-                if (pct != progress) main.post(() -> {
-                    progress = pct;
-                    listener.onUpdateState();
-                });
+                if (pct != shown) {
+                    shown = pct;
+                    main.post(() -> {
+                        progress = pct;
+                        listener.onUpdateState();
+                    });
+                }
             }
         }
     }
 
     private static String readText(String url) throws Exception {
-        HttpURLConnection c = open(url);
-        c.setRequestProperty("Accept", "application/vnd.github+json");
+        HttpURLConnection c = open(url, "application/vnd.github+json");
         try (InputStream in = c.getInputStream()) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] buf = new byte[8192];
@@ -203,11 +206,13 @@ class Updater {
         }
     }
 
-    private static HttpURLConnection open(String url) throws Exception {
+    // Headers must all be set here: asking for the response code connects.
+    private static HttpURLConnection open(String url, String accept) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(15000);
         c.setReadTimeout(30000);
         c.setRequestProperty("User-Agent", "Ayva-Android");
+        c.setRequestProperty("Accept", accept);
         c.setInstanceFollowRedirects(true);
         if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
         return c;
