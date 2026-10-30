@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ayva</string>
+    <string name="searching">Bu ağdaki bilgisayarlar aranıyor…</string>
+    <string name="found">İzlemek için bir bilgisayar seç</string>
+    <string name="live">CANLI</string>
+    <string name="ready">Hazır</string>
+    <string name="help">Bilgisayarında Ayva programını aç. Bilgisayar ve bu TV aynı ağda olmalı.</string>
+    <string name="not_found">Henüz bilgisayar bulunamadı. Bilgisayarda Ayva programı açık mı, güvenlik duvarı izin veriyor mu?</string>
+</resources>

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="skin" cx="0.38" cy="0.4" r="0.75">
+      <stop offset="0" stop-color="#FFE68A"/>
+      <stop offset="0.55" stop-color="#F5C842"/>
+      <stop offset="1" stop-color="#D99A1E"/>
+    </radialGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7BC96F"/>
+      <stop offset="1" stop-color="#3E8E41"/>
+    </linearGradient>
+  </defs>
+  <!-- Quince: narrower, slightly lumpy top; round, heavy bottom -->
+  <path d="M32 13c-6.5 0-10.5 4.6-11.6 10.4C13.6 26.6 10 33.5 11.2 42c1.6 11 10.4 17 20.8 17s19.2-6 20.8-17c1.2-8.5-2.4-15.4-9.2-18.6C42.5 17.6 38.5 13 32 13z" fill="url(#skin)"/>
+  <!-- Stem and leaf -->
+  <path d="M32 14.5c0-3 .8-5.6 2.4-7.6" stroke="#7A4B12" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+  <path d="M35 8.5c4.5-4.6 11.5-4.8 15.6-1.4-3.4 4.8-10.6 6.4-15.6 1.4z" fill="url(#leaf)"/>
+  <!-- Shine -->
+  <ellipse cx="22.5" cy="33" rx="3.4" ry="6.2" transform="rotate(18 22.5 33)" fill="#fff" opacity="0.38"/>
+  <!-- Broadcast waves: the screen going out -->
+  <g stroke="#7A4B12" stroke-width="3.2" stroke-linecap="round" fill="none">
+    <path d="M22.5 41.5a13 13 0 0 1 19 0"/>
+    <path d="M27 46.5a6.6 6.6 0 0 1 10 0"/>
+  </g>
+  <circle cx="32" cy="51" r="2.6" fill="#7A4B12"/>
+</svg>

@@ -1,0 +1,13 @@
+# For local testing only (npx wrangler dev). The desktop app deploys the
+# worker to the user's account through the Cloudflare API with the same settings.
+name = "ayva"
+main = "dist/worker.js"
+compatibility_date = "2024-09-23"
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "Hub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Hub"]

@@ -1,0 +1,30 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.github.ayva.tv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.ayva.tv'
+        minSdk 21
+        targetSdk 34
+        versionCode 3
+        versionName '0.7.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Signed with the debug key so the APK installs without extra setup.
+            // Use your own keystore if you publish to a store.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}

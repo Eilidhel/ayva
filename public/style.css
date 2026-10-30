@@ -1,0 +1,590 @@
+/* Colours of the quince: golden skin, green leaf, brown stem, on warm dark. */
+:root {
+  --bg: #16130e;
+  --panel: #201c15;
+  --panel-2: #2c271d;
+  --panel-3: #3a3326;
+  --text: #f4efe4;
+  --muted: #a89f8c;
+  --accent: #f2c14e;
+  --accent-2: #e0a92a;
+  --on-accent: #2a1d05;
+  --leaf: #7cc46e;
+  --live: #e5484d;
+  --ok: #7cc46e;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+a { color: inherit; }
+
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 16px;
+}
+
+h1 {
+  font-size: 2rem;
+  margin: 0 0 8px;
+}
+
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo svg { width: 40px; height: 40px; }
+
+.muted { color: var(--muted); }
+.small { font-size: 0.9rem; }
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.card {
+  display: block;
+  background: var(--panel);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  padding: 28px;
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.card:hover, .card:focus { border-color: var(--accent); outline: none; transform: translateY(-2px); }
+.card h2 { margin: 0 0 8px; }
+.card p { margin: 0; color: var(--muted); }
+
+.panel {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-top: 16px;
+}
+
+.code {
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  font-variant-numeric: tabular-nums;
+}
+
+.link {
+  font-family: ui-monospace, Consolas, monospace;
+  background: var(--panel-2);
+  padding: 6px 10px;
+  border-radius: 8px;
+  display: inline-block;
+  word-break: break-all;
+  margin: 4px 0;
+}
+
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.spread { justify-content: space-between; }
+
+button, select, input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
+button:hover, button:focus { background: var(--accent-2); outline: 3px solid #f2c14e33; }
+button.secondary { background: var(--panel-2); color: var(--text); }
+button.secondary:hover, button.secondary:focus { background: var(--panel-3); }
+button.danger { background: var(--live); color: #fff; }
+button.danger:hover, button.danger:focus { background: #c93c40; }
+button:disabled { opacity: 0.5; cursor: default; }
+
+select {
+  background: var(--panel-2);
+  border: 0;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.badge.live { background: var(--live); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+.preview {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: var(--radius);
+  margin-top: 16px;
+}
+
+.status { margin-top: 12px; color: var(--muted); }
+.error { color: #ff8a8a; }
+
+/* Codes and links are blurred while sharing unless the user reveals them. */
+.live:not(.revealed) .secret {
+  filter: blur(12px);
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.small-btn { padding: 6px 12px; font-size: 0.85rem; }
+
+.devices { margin-top: 8px; }
+.device {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border-radius: 10px;
+  margin-top: 8px;
+}
+.device .tag {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  margin-left: 6px;
+}
+.device .tag.net { color: var(--leaf); }
+.approval-box { width: min(440px, 100%); }
+
+.device-name { min-width: 0; overflow-wrap: anywhere; }
+.rename-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.rename-input:focus { outline: none; }
+
+/* Long-running step: big enough to notice, with a spinner. */
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f2c14e1f;
+  border: 1px solid var(--accent);
+  font-weight: 600;
+}
+.progress::before {
+  content: '';
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 3px solid var(--panel-2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.steps { padding-left: 20px; line-height: 1.6; color: var(--muted); }
+.steps a { color: var(--accent); }
+.field { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.field input {
+  font: inherit;
+  color: inherit;
+  background: var(--panel-2);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 10px;
+}
+.field input:focus { border-color: var(--accent); outline: none; }
+
+.internet {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--panel-2);
+}
+.internet-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-top: 12px;
+}
+.internet-box[hidden] { display: none; }
+.internet-box img {
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.stat-row {
+  margin-top: 10px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.stat-row b { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.bad { color: #ff8a8a; font-weight: 700; }
+
+/* ---- Source picker (desktop app) ---- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: #000a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal[hidden] { display: none; }
+
+.modal-box {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: min(900px, 100%);
+  max-height: 100%;
+  overflow: auto;
+}
+.modal-box h2 { margin: 0; }
+
+.sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.source {
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 8px;
+  text-align: left;
+  font-weight: 400;
+}
+.source:hover, .source:focus { color: var(--on-accent); }
+.source img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: #000;
+  border-radius: 6px;
+  display: block;
+}
+.source span {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Watch page ---- */
+
+.watch-body { overflow: hidden; }
+
+#video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  object-fit: contain;
+}
+
+/* ---- Remote control (watch page) ---- */
+
+#touchLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.control-on #touchLayer { display: block; }
+
+#kbBtn { display: none; }
+.control-on.control-touch #kbBtn { display: inline-block; }
+
+/* Off-screen but focusable, so it can bring up the phone keyboard. */
+#kbInput {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  font-size: 16px; /* stops iOS from zooming in */
+  border: 0;
+  padding: 0;
+}
+
+.kb-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  background: var(--panel);
+}
+.kb-bar[hidden] { display: none; }
+.kb-bar button { padding: 10px 12px; min-width: 44px; }
+
+.toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  background: var(--panel);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 600;
+}
+.toast[hidden] { display: none; }
+
+.controls { z-index: 10; }
+
+/* Shown when the browser won't start the picture without a tap. */
+.play-btn {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 18;
+  width: 88px;
+  height: 88px;
+  padding: 0 0 0 6px;
+  border-radius: 50%;
+  font-size: 2.2rem;
+  box-shadow: 0 8px 32px #000a;
+}
+.play-btn[hidden] { display: none; }
+
+/* "Hide buttons" */
+.ui-hidden .controls, .ui-hidden #kbBar, .ui-hidden #sendSheet { display: none; }
+.show-ui {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  right: calc(10px + env(safe-area-inset-right));
+  z-index: 16;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  line-height: 1;
+  background: #0007;
+  color: #fff;
+  opacity: 0.6;
+}
+.show-ui:hover, .show-ui:focus { opacity: 1; background: #000a; }
+.show-ui[hidden] { display: none; }
+.app #hideUiBtn { display: none; }
+
+/* ---- Files and clipboard (watch page) ---- */
+
+#sendBtn { display: none; }
+.control-on.transfer-on:not(.app) #sendBtn { display: inline-block; }
+
+.inbox {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100% - 32px));
+}
+.inbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 8px 10px;
+  box-shadow: 0 4px 16px #0006;
+}
+.inbox-text {
+  flex: 1;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.send-sheet {
+  position: fixed;
+  right: 16px;
+  bottom: 72px;
+  z-index: 14;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(320px, calc(100% - 32px));
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: 0 8px 24px #0008;
+}
+.send-sheet[hidden] { display: none; }
+.send-sheet textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--panel-2);
+  border: 0;
+  border-radius: 10px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px;
+  background: var(--bg);
+}
+.overlay.hidden { display: none; }
+
+#codeInput {
+  width: 9ch;
+  font-size: 3rem;
+  text-align: center;
+  letter-spacing: 0.2em;
+  background: var(--panel);
+  border: 2px solid var(--panel-2);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin: 16px 0;
+}
+#codeInput:focus { border-color: var(--accent); outline: none; }
+
+#pwForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(320px, 100%);
+  margin-top: 8px;
+}
+#pwForm[hidden] { display: none; }
+#pwInput {
+  font-size: 1.2rem;
+  background: var(--panel);
+  border: 2px solid var(--panel-2);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+#pwInput:focus { border-color: var(--accent); outline: none; }
+
+.host-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(420px, 100%);
+  margin-top: 8px;
+}
+.host-list[hidden] { display: none; }
+.host-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--panel-2);
+  padding: 16px 18px;
+  font-size: 1.1rem;
+  text-align: left;
+}
+.host-btn { color: var(--text); }
+.host-btn:focus, .host-btn:hover { background: var(--accent); color: var(--on-accent); }
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 72px);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.keypad button { font-size: 1.5rem; padding: 14px 0; background: var(--panel-2); }
+.keypad button { color: var(--text); }
+.keypad button:focus { background: var(--accent); color: var(--on-accent); }
+
+/* Bottom-right on wide screens; on narrow ones the buttons wrap onto more
+   rows instead of running off the left edge. Insets keep clear of notches
+   and the home bar (viewport-fit=cover). */
+.controls {
+  position: fixed;
+  left: calc(16px + env(safe-area-inset-left));
+  right: calc(16px + env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: none; /* only the buttons themselves take clicks */
+  transition: opacity 0.3s;
+}
+.controls button { pointer-events: auto; white-space: nowrap; }
+
+@media (max-width: 600px) {
+  .controls {
+    left: calc(8px + env(safe-area-inset-left));
+    right: calc(8px + env(safe-area-inset-right));
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    justify-content: center;
+    gap: 6px;
+  }
+  .controls button { padding: 9px 12px; font-size: 0.85rem; }
+}
+.idle .controls { opacity: 0; }
+.idle .controls button { pointer-events: none; }
+.app .controls button:not(#unmuteBtn) { display: none; }
+.idle { cursor: none; }
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--panel-2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  margin-bottom: 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

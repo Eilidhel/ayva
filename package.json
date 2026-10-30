@@ -1,0 +1,74 @@
+{
+  "name": "ayva",
+  "productName": "Ayva",
+  "version": "0.7.3",
+  "description": "Share your computer screen to any TV over the internet, like a Discord stream. Self-hosted, browser-based, no cables.",
+  "author": "Ayva contributors",
+  "main": "desktop/main.js",
+  "scripts": {
+    "start": "node server.js",
+    "app": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "screen-share",
+    "webrtc",
+    "tv",
+    "cast",
+    "stream",
+    "self-hosted",
+    "android-tv"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "koffi": "^2.16.3",
+    "qrcode": "^1.5.4",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "wrangler": "^3.114.17"
+  },
+  "build": {
+    "appId": "io.github.ayva.desktop",
+    "productName": "Ayva",
+    "extraMetadata": {
+      "description": "Ayva"
+    },
+    "files": [
+      "server.js",
+      "public/**",
+      "desktop/**",
+      "cloud/worker.js",
+      "cloud/build.js",
+      "package.json",
+      "!desktop/render-icons.js",
+      "!node_modules/koffi/build/koffi/{darwin,freebsd,linux,musl,openbsd}_*/**",
+      "!node_modules/koffi/build/koffi/win32_{arm64,ia32}/**",
+      "!node_modules/koffi/{src,doc,vendor}/**"
+    ],
+    "asarUnpack": [
+      "node_modules/koffi/**"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "desktop/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Ayva-Setup-${version}.exe",
+      "include": "desktop/installer.nsh"
+    }
+  }
+}

@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Share · Ayva</title>
+  <link rel="icon" href="/icon.svg">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="row spread">
+      <a class="logo" href="/" style="text-decoration:none">
+        <img src="/icon.svg" alt="" width="40" height="40">
+        <h1>Ayva</h1>
+      </a>
+      <div class="row">
+        <span id="liveBadge" class="badge"><span class="dot"></span><span id="liveText"></span></span>
+        <span class="badge"><span data-i18n="viewers"></span>: <span id="viewerCount">0</span></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="row spread">
+        <div class="muted small" data-i18n="yourCode"></div>
+        <button id="revealBtn" class="secondary small-btn" hidden></button>
+      </div>
+      <!-- Blurred while sharing, so the code can't be read off the stream -->
+      <div class="secret">
+        <div id="code" class="code">······</div>
+        <div class="muted small" style="margin-top:12px" data-i18n="openOnTv"></div>
+        <div id="links"></div>
+        <div class="muted small" data-i18n="orEnterCode"></div>
+      </div>
+
+      <!-- Fixed address on the user's Cloudflare account (desktop app only) -->
+      <div id="cloud" class="internet" hidden>
+        <div class="row">
+          <button id="cloudSetupBtn" class="secondary" data-i18n="cloudSetup"></button>
+          <span id="cloudState" class="muted small"></span>
+        </div>
+        <div id="cloudBox" class="secret internet-box" hidden>
+          <img id="cloudQr" alt="" width="180" height="180">
+          <div>
+            <div class="muted small" data-i18n="cloudScan"></div>
+            <div><span id="cloudLink" class="link"></span></div>
+            <div class="row">
+              <button id="copyCloudBtn" class="secondary small-btn" data-i18n="copyLink"></button>
+              <button id="cloudRemoveBtn" class="secondary small-btn" data-i18n="cloudRemove"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Internet access (desktop app only) -->
+      <div id="internet" class="internet" hidden>
+        <div class="row">
+          <button id="internetBtn" class="secondary"></button>
+          <span id="internetStatus" class="muted small"></span>
+        </div>
+        <div id="internetBox" class="secret internet-box" hidden>
+          <img id="internetQr" alt="" width="180" height="180">
+          <div>
+            <div class="muted small" data-i18n="internetScan"></div>
+            <div><span id="internetLink" class="link"></span></div>
+            <button id="copyLinkBtn" class="secondary small-btn" data-i18n="copyLink"></button>
+            <div class="muted small" style="margin-top:8px" data-i18n="internetWarning"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="row">
+        <label class="muted" for="quality" data-i18n="quality"></label>
+        <select id="quality">
+          <option value="1440p60">1440p · 60 FPS</option>
+          <option value="1440p30">1440p · 30 FPS</option>
+          <option value="1080p60" selected>1080p · 60 FPS</option>
+          <option value="1080p30">1080p · 30 FPS</option>
+          <option value="720p60">720p · 60 FPS</option>
+          <option value="720p30">720p · 30 FPS</option>
+        </select>
+        <button id="startBtn" data-i18n="startShare"></button>
+        <button id="stopBtn" class="danger" data-i18n="stopShare" hidden></button>
+        <button id="switchBtn" class="secondary" data-i18n="switchSource" hidden></button>
+        <button id="controlBtn" class="secondary" hidden></button>
+        <button id="sendFileBtn" class="secondary" data-i18n="sendFile" hidden></button>
+        <button id="sendClipBtn" class="secondary" data-i18n="sendClipboard" hidden></button>
+        <input id="sendFileInput" type="file" multiple hidden>
+      </div>
+      <div id="transferStatus" class="status small"></div>
+      <div id="controlHint" class="status small" hidden></div>
+      <div id="status" class="status"></div>
+      <div id="audioTip" class="status small" data-i18n="audioTip"></div>
+      <video id="preview" class="preview" autoplay muted playsinline></video>
+    </div>
+
+    <div class="panel">
+      <div class="row spread">
+        <div class="muted small" data-i18n="devicesTitle"></div>
+        <label class="row small">
+          <input id="askApproval" type="checkbox">
+          <span data-i18n="askApproval"></span>
+        </label>
+      </div>
+      <div id="devices" class="devices"></div>
+      <label id="startWithWindowsRow" class="row small" style="margin-top:16px" hidden>
+        <input id="startWithWindows" type="checkbox">
+        <span data-i18n="startWithWindows"></span>
+      </label>
+      <div id="trustedWrap" hidden>
+        <div class="muted small" style="margin-top:16px" data-i18n="trustedTitle"></div>
+        <div id="trusted" class="devices"></div>
+      </div>
+    </div>
+
+    <div id="statsPanel" class="panel" hidden>
+      <div class="muted small" data-i18n="connectionInfo"></div>
+      <div id="stats"></div>
+    </div>
+  </div>
+
+  <!-- Fixed address setup -->
+  <div id="cloudModal" class="modal" hidden>
+    <div class="modal-box approval-box">
+      <h2 data-i18n="cloudSetupTitle"></h2>
+      <ol class="steps small">
+        <li><span data-i18n="cloudStep1"></span>
+          <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener" data-i18n="cloudOpenTokens"></a></li>
+        <li data-i18n="cloudStep2"></li>
+        <li data-i18n="cloudStep3"></li>
+      </ol>
+      <label class="field">
+        <span class="small muted" data-i18n="cloudTokenLabel"></span>
+        <input id="cloudToken" type="password" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="field">
+        <span class="small muted" data-i18n="cloudPasswordLabel"></span>
+        <input id="cloudPassword" type="password" autocomplete="new-password">
+      </label>
+      <label class="field">
+        <span class="small muted" data-i18n="cloudPasswordAgain"></span>
+        <input id="cloudPassword2" type="password" autocomplete="new-password">
+      </label>
+      <div class="small muted" data-i18n="cloudPasswordNote"></div>
+      <div id="cloudSetupStatus" class="status small"></div>
+      <div class="row" style="margin-top:12px">
+        <button id="cloudGoBtn" data-i18n="cloudGo"></button>
+        <button id="cloudCancelBtn" class="secondary" data-i18n="cancel"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- A new device asks to watch -->
+  <div id="approval" class="modal" hidden>
+    <div class="modal-box approval-box">
+      <h2 data-i18n="approvalTitle"></h2>
+      <p id="approvalText"></p>
+      <label class="field" style="margin-bottom:12px">
+        <span class="small muted" data-i18n="deviceNameLabel"></span>
+        <input id="approvalName" maxlength="40" autocomplete="off">
+      </label>
+      <label class="row small" style="margin-bottom:16px">
+        <input id="approvalRemember" type="checkbox" checked>
+        <span data-i18n="rememberDevice"></span>
+      </label>
+      <div class="row">
+        <button id="approveBtn" data-i18n="approve"></button>
+        <button id="rejectBtn" class="secondary" data-i18n="reject"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen/window picker, used by the desktop app -->
+  <div id="picker" class="modal" hidden>
+    <div class="modal-box">
+      <div class="row spread">
+        <h2 data-i18n="pickSource"></h2>
+        <button id="pickerCancel" class="secondary" data-i18n="cancel"></button>
+      </div>
+      <label class="row small" style="margin:8px 0 16px">
+        <input id="pickerAudio" type="checkbox" checked>
+        <span data-i18n="sendAudio"></span>
+      </label>
+      <div id="sources" class="sources"></div>
+    </div>
+  </div>
+
+  <script src="/common.js"></script>
+  <script src="/share.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+npm-debug.log*
+.DS_Store
+.env
+.claude/
+cloud/.dev.vars
+cloud/dist/
+cloud/.wrangler/

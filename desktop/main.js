@@ -1,0 +1,449 @@
+// Windows/macOS/Linux desktop app: runs the server inside the app and shows
+// the share page in a window with its own screen/window picker.
+
+const fs = require('fs');
+const path = require('path');
+const {
+  app, BrowserWindow, desktopCapturer, ipcMain, session, shell, Menu, screen, globalShortcut,
+  clipboard, Notification, Tray,
+} = require('electron');
+const crypto = require('crypto');
+const QRCode = require('qrcode');
+const { start } = require('../server');
+const input = require('./input');
+const { Tunnel } = require('./tunnel');
+const { Cloud } = require('./cloud');
+const { Receiver } = require('./files');
+
+const FIRST_PORT = 3000;
+const LAST_PORT = 3010;
+// Emergency switch: turns remote control off from the keyboard, even while
+// someone else is moving the mouse.
+const CONTROL_OFF_SHORTCUT = 'CommandOrControl+Alt+K';
+
+let win = null;
+let server = null;
+let selected = { sourceId: null, audio: true, displayId: null };
+let screenDisplayIds = {}; // source id -> display id, for screen sources
+
+// ---- Remote control ----
+// The share page receives control messages from viewers over WebRTC and
+// passes them here; they only take effect while control is switched on.
+
+let controlEnabled = false;
+const pressedKeys = new Set();
+const pressedButtons = new Set();
+
+function releaseAll() {
+  for (const code of pressedKeys) input.key(code, false);
+  for (const b of pressedButtons) input.button(b, false);
+  pressedKeys.clear();
+  pressedButtons.clear();
+}
+
+function setControl(on) {
+  controlEnabled = !!on && input.supported;
+  if (!controlEnabled) releaseAll();
+  if (controlEnabled) input.init();
+}
+
+// Physical-pixel rectangle of the shared screen, or null when a window is shared.
+function sharedScreenRect() {
+  if (!selected.displayId) return null;
+  const display = screen.getAllDisplays().find((d) => String(d.id) === selected.displayId);
+  if (!display) return null;
+  return process.platform === 'win32' ? screen.dipToScreenRect(null, display.bounds) : display.bounds;
+}
+
+function clamp(v, min, max) {
+  return Math.min(max, Math.max(min, v));
+}
+
+function handleControl(msg) {
+  if (!controlEnabled || !msg || typeof msg !== 'object') return;
+  switch (msg.t) {
+    case 'move':
+      input.moveBy(clamp(Number(msg.dx) || 0, -2000, 2000), clamp(Number(msg.dy) || 0, -2000, 2000));
+      break;
+    case 'abs': {
+      const rect = sharedScreenRect();
+      if (!rect) return;
+      const x = clamp(Number(msg.x) || 0, 0, 1);
+      const y = clamp(Number(msg.y) || 0, 0, 1);
+      input.moveTo(rect.x + x * (rect.width - 1), rect.y + y * (rect.height - 1));
+      break;
+    }
+    case 'button':
+      if (!['left', 'right', 'middle'].includes(msg.b)) return;
+      input.button(msg.b, !!msg.down);
+      if (msg.down) pressedButtons.add(msg.b);
+      else pressedButtons.delete(msg.b);
+      break;
+    case 'click':
+      if (!['left', 'right', 'middle'].includes(msg.b)) return;
+      input.button(msg.b, true);
+      input.button(msg.b, false);
+      break;
+    case 'wheel':
+      input.wheel(clamp(Number(msg.dx) || 0, -1200, 1200), clamp(Number(msg.dy) || 0, -1200, 1200));
+      break;
+    case 'key':
+      if (!input.isKnownKey(msg.code)) return;
+      if (msg.down === undefined) {
+        input.key(msg.code, true);
+        input.key(msg.code, false);
+      } else {
+        input.key(msg.code, !!msg.down);
+        if (msg.down) pressedKeys.add(msg.code);
+        else pressedKeys.delete(msg.code);
+      }
+      break;
+    case 'text':
+      if (typeof msg.s === 'string') input.text(msg.s.slice(0, 500));
+      break;
+    case 'release':
+      releaseAll();
+      break;
+  }
+}
+
+function fromOurWindow(event) {
+  return win && event.sender === win.webContents;
+}
+
+ipcMain.handle('control-supported', () => input.supported);
+
+ipcMain.handle('set-control', (event, on) => {
+  if (!fromOurWindow(event)) return false;
+  setControl(on);
+  return controlEnabled;
+});
+
+ipcMain.on('control-input', (event, msg) => {
+  if (fromOurWindow(event)) handleControl(msg);
+});
+
+// ---- Files and clipboard from viewers ----
+// Accepted only while remote control is on. Saved by desktop/files.js into
+// Desktop\Ayva\<date and time>\, one folder per send.
+
+let receiver = null; // created once the app is ready (needs the Desktop path)
+
+function filesRoot() {
+  if (!receiver) receiver = new Receiver(path.join(app.getPath('desktop'), 'Ayva'));
+  return receiver;
+}
+
+ipcMain.on('file-begin', (event, id, name, size, batchKey) => {
+  if (fromOurWindow(event) && controlEnabled) filesRoot().begin(id, name, size, batchKey);
+});
+
+ipcMain.on('file-chunk', (event, id, data) => {
+  if (fromOurWindow(event)) filesRoot().chunk(id, data);
+});
+
+ipcMain.handle('file-end', (event, id) => (fromOurWindow(event) ? filesRoot().end(id) : null));
+
+ipcMain.handle('batch-end', (event, batchKey) => (fromOurWindow(event) ? filesRoot().endBatch(batchKey) : null));
+
+ipcMain.on('open-folder', (event, dir) => {
+  // Only folders Ayva itself made under Desktop\Ayva.
+  if (fromOurWindow(event) && filesRoot().owns(dir)) shell.openPath(path.resolve(String(dir)));
+});
+
+ipcMain.handle('set-clipboard', (event, text) => {
+  if (!fromOurWindow(event) || !controlEnabled) return false;
+  clipboard.writeText(String(text).slice(0, 100000));
+  return true;
+});
+
+ipcMain.handle('get-clipboard', (event) => (fromOurWindow(event) ? clipboard.readText() : ''));
+
+// Windows notification; clicking it brings the window back, or opens the
+// folder / shows the file it is about.
+ipcMain.on('notify', (event, title, body, filePath) => {
+  if (!fromOurWindow(event) || !Notification.isSupported()) return;
+  const n = new Notification({ title: String(title), body: String(body), icon: path.join(__dirname, 'icon.png') });
+  n.on('click', () => {
+    if (filePath && fs.existsSync(filePath)) {
+      if (fs.statSync(filePath).isDirectory()) shell.openPath(filePath);
+      else shell.showItemInFolder(filePath);
+    } else {
+      showWindow();
+    }
+  });
+  n.show();
+  if (win && !win.isFocused()) win.flashFrame(true);
+});
+
+// ---- Fixed address (Cloudflare Workers in the user's account) ----
+
+let cloud = null;
+
+ipcMain.handle('cloud-status', () => (cloud ? cloud.status() : { configured: false }));
+
+ipcMain.handle('cloud-setup', async (event, apiToken, password) => {
+  if (!fromOurWindow(event)) return { error: 'denied' };
+  try {
+    const status = await cloud.setup(apiToken, password, (step) => {
+      if (win) win.webContents.send('cloud-progress', step);
+    });
+    return { status };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle('cloud-remove', async (event) => {
+  if (!fromOurWindow(event)) return false;
+  await cloud.remove();
+  return true;
+});
+
+// ---- Internet access ----
+// A Cloudflare quick tunnel makes the server reachable from anywhere. Viewers
+// coming through it must present a fresh random access key (part of the link),
+// which changes every time internet access is switched on.
+
+let tunnel = null;
+let accessKey = null;
+
+function stopInternet() {
+  accessKey = null;
+  if (tunnel) tunnel.stop();
+}
+
+ipcMain.handle('internet-supported', () => process.platform === 'win32');
+
+ipcMain.handle('internet-start', async (event) => {
+  if (!fromOurWindow(event)) return { error: 'denied' };
+  if (!tunnel) {
+    tunnel = new Tunnel(app.getPath('userData'));
+    tunnel.onExit = () => {
+      accessKey = null;
+      if (win) win.webContents.send('internet-stopped');
+    };
+  }
+  try {
+    await tunnel.ensureBinary((fraction) => {
+      if (win) win.webContents.send('internet-progress', fraction);
+    });
+    const url = await tunnel.start(server.port);
+    accessKey = crypto.randomBytes(18).toString('base64url');
+    return { url, key: accessKey };
+  } catch (err) {
+    stopInternet();
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle('internet-stop', (event) => {
+  if (fromOurWindow(event)) stopInternet();
+});
+
+ipcMain.handle('make-qr', (_event, text) =>
+  QRCode.toDataURL(String(text), { margin: 1, width: 360, errorCorrectionLevel: 'M' }));
+
+// While sharing, leave this window out of screen captures (Windows 10 2004+
+// excludes it entirely), so codes and links never reach the stream.
+ipcMain.on('hide-from-capture', (event, on) => {
+  if (fromOurWindow(event)) win.setContentProtection(!!on);
+});
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+}
+
+app.on('second-instance', () => showWindow());
+
+async function startServer() {
+  for (let port = FIRST_PORT; port <= LAST_PORT; port++) {
+    try {
+      return await start({ port, getAccessKey: () => accessKey });
+    } catch (err) {
+      if (err.code !== 'EADDRINUSE') throw err;
+    }
+  }
+  throw new Error('No free port between ' + FIRST_PORT + ' and ' + LAST_PORT);
+}
+
+ipcMain.handle('get-sources', async () => {
+  const sources = await desktopCapturer.getSources({
+    types: ['screen', 'window'],
+    thumbnailSize: { width: 320, height: 180 },
+    fetchWindowIcons: false,
+  });
+  screenDisplayIds = {};
+  for (const s of sources) {
+    if (s.id.startsWith('screen:') && s.display_id) screenDisplayIds[s.id] = String(s.display_id);
+  }
+  return sources
+    .filter((s) => !s.thumbnail.isEmpty())
+    .map((s) => ({
+      id: s.id,
+      name: s.name,
+      isScreen: s.id.startsWith('screen:'),
+      thumbnail: s.thumbnail.toDataURL(),
+    }));
+});
+
+ipcMain.handle('select-source', (_event, choice) => {
+  const sourceId = String(choice.sourceId);
+  // Pointing at a spot on the picture ("absolute" mouse) needs to know which
+  // screen the picture is; for a shared window only relative moves work.
+  selected = { sourceId, audio: !!choice.audio, displayId: screenDisplayIds[sourceId] || null };
+  return { absolute: !!selected.displayId };
+});
+
+// ---- Running in the background ----
+// Closing the window hides it to the tray icon; the server keeps running, so
+// TVs and phones can still find this computer. "Quit" in the tray menu exits.
+
+const TR = () => app.getLocale().toLowerCase().startsWith('tr'); // only valid once the app is ready
+const STARTED_HIDDEN = process.argv.includes('--hidden'); // launched with Windows
+let tray = null;
+let quitting = false;
+let toldAboutTray = false;
+
+function showWindow() {
+  if (!win) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+
+function startsWithWindows() {
+  return app.getLoginItemSettings({ args: ['--hidden'] }).openAtLogin;
+}
+
+function setStartWithWindows(on) {
+  app.setLoginItemSettings({ openAtLogin: !!on, args: ['--hidden'] });
+  updateTrayMenu();
+}
+
+function updateTrayMenu() {
+  if (!tray) return;
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: TR() ? 'Ayva\'yı aç' : 'Open Ayva', click: showWindow },
+    {
+      label: TR() ? 'Windows açılınca başlat' : 'Start with Windows',
+      type: 'checkbox',
+      checked: startsWithWindows(),
+      click: (item) => setStartWithWindows(item.checked),
+    },
+    { type: 'separator' },
+    { label: TR() ? 'Çıkış' : 'Quit', click: () => { quitting = true; app.quit(); } },
+  ]));
+}
+
+function createTray() {
+  tray = new Tray(path.join(__dirname, 'icon.png'));
+  tray.setToolTip('Ayva');
+  tray.on('click', showWindow);
+  updateTrayMenu();
+}
+
+ipcMain.handle('get-start-with-windows', () => startsWithWindows());
+ipcMain.handle('set-start-with-windows', (event, on) => {
+  if (fromOurWindow(event)) setStartWithWindows(on);
+  return startsWithWindows();
+});
+
+function createWindow(port) {
+  win = new BrowserWindow({
+    width: 1000,
+    height: 760,
+    minWidth: 520,
+    minHeight: 480,
+    show: !STARTED_HIDDEN,
+    backgroundColor: '#16130e',
+    title: 'Ayva',
+    icon: path.join(__dirname, 'icon.png'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  // getDisplayMedia() in the page ends up here; answer with the source the
+  // user picked in our own picker.
+  session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
+    const sources = await desktopCapturer.getSources({ types: ['screen', 'window'] });
+    const source = sources.find((s) => s.id === selected.sourceId);
+    if (!source) {
+      callback({});
+      return;
+    }
+    // System audio capture ("loopback") is supported on Windows.
+    const audio = selected.audio && process.platform === 'win32' ? 'loopback' : undefined;
+    callback(audio ? { video: source, audio } : { video: source });
+  });
+
+  // Links to the outside world open in the normal browser.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  win.loadURL('http://localhost:' + port + '/share?app=1');
+
+  win.on('close', (e) => {
+    if (quitting) return;
+    e.preventDefault();
+    win.hide();
+    if (!toldAboutTray && Notification.isSupported()) {
+      toldAboutTray = true;
+      new Notification({
+        title: 'Ayva',
+        body: TR()
+          ? 'Ayva arka planda çalışmaya devam ediyor. Çıkmak için saat yanındaki simgeye sağ tıkla.'
+          : 'Ayva keeps running in the background. Right-click the tray icon to quit.',
+        icon: path.join(__dirname, 'icon.png'),
+      }).show();
+    }
+  });
+  win.on('closed', () => { win = null; });
+}
+
+app.whenReady().then(async () => {
+  Menu.setApplicationMenu(null);
+  // Encrypted DNS lets Chromium use Encrypted Client Hello, so the address
+  // being visited isn't sent in the clear. Some networks block workers.dev by
+  // that name; with this, the fixed address keeps working there.
+  app.configureHostResolver({
+    secureDnsMode: 'automatic',
+    secureDnsServers: ['https://cloudflare-dns.com/dns-query', 'https://dns.google/dns-query'],
+  });
+  try {
+    server = await startServer();
+  } catch (err) {
+    const { dialog } = require('electron');
+    dialog.showErrorBox('Ayva', 'Could not start: ' + err.message);
+    app.quit();
+    return;
+  }
+  cloud = new Cloud(app.getPath('userData'), path.join(__dirname, '..', 'public'), app.getVersion());
+  // Keep the pages at the fixed address in step with this version of Ayva.
+  cloud.updateIfNeeded().catch(() => {});
+  createWindow(server.port);
+  createTray();
+
+  globalShortcut.register(CONTROL_OFF_SHORTCUT, () => {
+    setControl(false);
+    if (win) win.webContents.send('control-forced-off');
+  });
+});
+
+app.on('before-quit', () => { quitting = true; });
+
+app.on('will-quit', () => {
+  releaseAll();
+  stopInternet();
+  globalShortcut.unregisterAll();
+});
+
+app.on('window-all-closed', () => {
+  if (server) server.close();
+  app.quit();
+});

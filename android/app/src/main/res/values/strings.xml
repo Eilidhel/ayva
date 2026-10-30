@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ayva</string>
+    <string name="searching">Looking for computers on this network…</string>
+    <string name="found">Choose a computer to watch</string>
+    <string name="live">LIVE</string>
+    <string name="ready">Ready</string>
+    <string name="help">Open the Ayva program on your computer. The computer and this TV must be on the same network.</string>
+    <string name="not_found">No computer found yet. Is the Ayva program open on your computer, and allowed through the firewall?</string>
+</resources>

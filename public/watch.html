@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ayva</title>
+  <link rel="icon" href="/icon.svg">
+  <!-- "Add to Home Screen" opens Ayva like an app: no browser bars, the whole screen for the picture -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ayva">
+  <meta name="theme-color" content="#16130e">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="watch-body">
+  <!-- No picture-in-picture / AirPlay buttons from the browser on top of the stream -->
+  <video id="video" autoplay muted playsinline webkit-playsinline disablepictureinpicture disableremoteplayback x-webkit-airplay="deny"></video>
+  <button id="playBtn" class="play-btn" hidden>▶</button>
+
+  <!-- Catches touches/clicks for remote control (only active while control is on) -->
+  <div id="touchLayer"></div>
+  <div id="controlToast" class="toast" hidden></div>
+  <textarea id="kbInput" autocomplete="off" autocapitalize="off" spellcheck="false" aria-hidden="true"></textarea>
+  <div id="kbBar" class="kb-bar" hidden></div>
+
+  <!-- Files and text received from the computer -->
+  <div id="inbox" class="inbox"></div>
+
+  <!-- Send files / text to the computer (while remote control is on) -->
+  <div id="sendSheet" class="send-sheet" hidden>
+    <button id="pickFilesBtn" data-i18n="sendFilesToComputer"></button>
+    <input id="filesInput" type="file" multiple hidden>
+    <textarea id="sendText" rows="3" data-i18n-placeholder="pasteHere"></textarea>
+    <button id="sendTextBtn" class="secondary" data-i18n="sendTextToComputer"></button>
+  </div>
+
+  <!-- Brings the controls back after "Hide buttons" -->
+  <button id="showUiBtn" class="show-ui" aria-label="" hidden>⋯</button>
+
+  <div class="controls">
+    <button id="hideUiBtn" class="secondary" data-i18n="hideUi"></button>
+    <button id="sendBtn" class="secondary" data-i18n="send"></button>
+    <button id="kbBtn" class="secondary" data-i18n="keyboard"></button>
+    <button id="unmuteBtn" data-i18n="unmute" hidden></button>
+    <button id="fullscreenBtn" class="secondary" data-i18n="fullscreen"></button>
+    <button id="changeBtn" class="secondary" data-i18n="change"></button>
+  </div>
+
+  <!-- Code entry -->
+  <div id="entry" class="overlay">
+    <div class="logo">
+      <img src="/icon.svg" alt="" width="40" height="40">
+      <h1>Ayva</h1>
+    </div>
+    <p class="muted" data-i18n="enterCode"></p>
+    <form id="codeForm">
+      <input id="codeInput" inputmode="numeric" pattern="\d{6}" maxlength="6" autocomplete="off" autofocus>
+      <div class="keypad" id="keypad"></div>
+      <button type="submit" data-i18n="watch" style="width:232px"></button>
+    </form>
+    <p id="entryError" class="error"></p>
+  </div>
+
+  <!-- Fixed address (Cloudflare): password once, then pick a computer -->
+  <div id="cloudEntry" class="overlay hidden">
+    <div class="logo">
+      <img src="/icon.svg" alt="" width="40" height="40">
+      <h1>Ayva</h1>
+    </div>
+    <p id="cloudTitle" class="muted"></p>
+    <form id="pwForm" hidden>
+      <input id="pwInput" type="password" autocomplete="current-password">
+      <button type="submit" data-i18n="continue"></button>
+    </form>
+    <div id="hostList" class="host-list" hidden></div>
+    <p id="cloudError" class="error"></p>
+  </div>
+
+  <!-- Waiting / connecting -->
+  <div id="waiting" class="overlay hidden">
+    <div class="spinner"></div>
+    <p id="waitingText" class="muted"></p>
+    <p id="waitingCodeRow" class="muted small"><span id="waitingCodeLabel" data-i18n="yourCode"></span>: <span id="waitingCode"></span></p>
+  </div>
+
+  <script src="/common.js"></script>
+  <script src="/watch.js"></script>
+  <script src="/cloud.js"></script>
+  <script src="/control.js"></script>
+  <script src="/inbox.js"></script>
+</body>
+</html>
