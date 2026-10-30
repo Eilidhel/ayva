@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -93,6 +94,12 @@ public class PlayerActivity extends Activity {
     }
 
     private class Chrome extends WebChromeClient {
+        // Without this, WebView draws a grey Android logo on the video before it plays.
+        @Override
+        public Bitmap getDefaultVideoPoster() {
+            return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+        }
+
         @Override
         public void onPermissionRequest(PermissionRequest request) {
             runOnUiThread(() -> {

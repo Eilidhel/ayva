@@ -327,7 +327,9 @@ function handleOffer(sdp) {
         $('playBtn').hidden = false;
       });
     });
-    showVideo();
+    // Tracks arrive with the offer, long before the connection is up. Until
+    // then keep "Connecting to the stream…" on screen instead of a black picture.
+    if (pc.connectionState === 'connected' || pc.connectionState === undefined) showVideo();
     updateExtras();
   };
 
@@ -343,6 +345,7 @@ function handleOffer(sdp) {
 
   pc.onconnectionstatechange = function () {
     updateExtras();
+    if (pc && pc.connectionState === 'connected') showVideo();
     if (pc && pc.connectionState === 'failed') {
       showWaiting(t('peerFailed'));
       // If the server connection dropped meanwhile, we're no longer in the
