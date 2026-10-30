@@ -638,8 +638,10 @@ function answerRequest(approved) {
         if ($('approvalRemember').checked && !isTrusted(req.deviceId)) rememberOnProof[req.deviceId] = deviceLabel(req);
       }
       viaSignal(req.id).send({ type: 'approve', id: req.id });
+      logEvent('allowed', req);
     } else {
       viaSignal(req.id).send({ type: 'reject', id: req.id });
+      logEvent('denied', req);
     }
   }
   showNextRequest();
@@ -730,6 +732,7 @@ function failProof(id) {
   delete proving[id];
   var text = t('proofFailed').replace('{who}', deviceLabel(p.msg));
   transferStatus(text);
+  logEvent('proofFailed', p.msg);
   if (window.ayva && window.ayva.notify) window.ayva.notify(text, '');
   p.sig.send({ type: 'kick', id: id });
 }
@@ -744,6 +747,7 @@ function dropRequest(id) {
 function kick(id) {
   var info = viewerInfo[id];
   if (info && info.deviceId) delete approvedThisRun[info.deviceId];
+  if (info) logEvent('kicked', info);
   viaSignal(id).send({ type: 'kick', id: id });
   // Also cut the direct connection, which works even without the server.
   viewerLeft(id);
@@ -986,6 +990,7 @@ function checkPin(id, hash) {
       transferStatus(text);
       if (window.ayva && window.ayva.notify) window.ayva.notify(text, '');
     }
+    logEvent(locked ? 'pinLocked' : 'pinWrong', info);
     reply({ kind: 'pin-result', ok: false, locked: locked });
   });
 }
@@ -1040,6 +1045,7 @@ function remoteShare(id, start) {
   var who = deviceLabel(viewerInfo[id]);
   if (!start) {
     if (!stream) return;
+    logEvent('remoteStop', viewerInfo[id]);
     stopSharing();
     transferStatus(t('remoteStopped').replace('{who}', who));
     window.ayva.notify(t('remoteStopped').replace('{who}', who), '');
@@ -1047,7 +1053,9 @@ function remoteShare(id, start) {
   }
   // Already live, or the user is picking a screen right now.
   if (stream || !$('picker').hidden) return;
+  var info = viewerInfo[id];
   window.ayva.remoteStart($('pickerAudio').checked).then(function (result) {
+    logEvent(result && result.ok ? 'remoteStart' : 'remoteFailed', info);
     var text = result && result.ok ? t('remoteStarted').replace('{who}', who)
       : t('remoteStartFailed').replace('{who}', who) + (result && result.error ? result.error : '');
     transferStatus(text);
@@ -1070,6 +1078,7 @@ function noteRecording(id, on) {
   if (!info || !!info.recording === on) return;
   info.recording = on;
   renderDevices();
+  if (on) logEvent('recording', info);
   if (on && window.ayva) window.ayva.notify(t('recordingTitle'), deviceLabel(info));
 }
 
@@ -1091,6 +1100,7 @@ function micOffer(id, sdp) {
     viaSignal(id).send({ type: 'signal', to: id, data: { kind: 'mic-refused' } });
     return;
   }
+  logEvent('talking', viewerInfo[id]);
   var pc = new RTCPeerConnection({ iceServers: config.iceServers });
   var audio = new Audio();
   audio.autoplay = true;
@@ -1487,6 +1497,8 @@ function signalingLost(id) {
 }
 
 function viewerLeft(id) {
+  var info = viewerInfo[id];
+  if (info) logEvent('left', info, Date.now() - info.joinedAt);
   delete orphaned[id];
   dropRequest(id);
   closeMic(id);
@@ -1538,12 +1550,92 @@ function handleHubMessage(msg, sig) {
 // Let in and proven: from here on it gets the picture and its rights.
 function viewerAdmitted(msg, sig, nonce) {
   viewerSignal[msg.id] = sig;
-  viewerInfo[msg.id] = { name: msg.name, deviceId: msg.deviceId, remote: msg.remote, nonce: nonce, pinOk: false };
+  viewerInfo[msg.id] = {
+    name: msg.name, deviceId: msg.deviceId, remote: msg.remote, nonce: nonce, pinOk: false, joinedAt: Date.now(),
+  };
+  logEvent('joined', viewerInfo[msg.id]);
   viewers[msg.id] = null;
   connectViewer(msg.id);
   sendCaps(msg.id);
   applyControl();
 }
+
+// ---- Connection history ----
+// Who connected, when, and what they did. Kept on this computer only, under
+// the name the device had at the time.
+
+var HISTORY_MAX = 300;
+var HISTORY_TEXT = {
+  joined: 'histJoined', left: 'histLeft', allowed: 'histAllowed', denied: 'histDenied',
+  kicked: 'histKicked', proofFailed: 'histProofFailed', pinWrong: 'histPinWrong',
+  pinLocked: 'histPinLocked', remoteStart: 'remoteStarted', remoteStop: 'remoteStopped',
+  remoteFailed: 'histRemoteFailed', recording: 'histRecording', talking: 'histTalking',
+};
+var HISTORY_ALERT = { denied: true, proofFailed: true, pinWrong: true, pinLocked: true };
+var connHistory = [];
+try {
+  connHistory = JSON.parse(storageGet('ayva-history') || '[]');
+  if (!Array.isArray(connHistory)) connHistory = [];
+} catch (e) {
+  connHistory = [];
+}
+
+function logEvent(event, info, ms) {
+  var entry = { at: Date.now(), e: event, who: deviceLabel(info) };
+  if (event === 'joined') entry.via = info && info.remote ? 'internet' : 'lan';
+  if (ms) entry.ms = ms;
+  connHistory.push(entry);
+  if (connHistory.length > HISTORY_MAX) connHistory = connHistory.slice(-HISTORY_MAX);
+  storageSet('ayva-history', JSON.stringify(connHistory));
+  renderHistory();
+}
+
+function durationText(ms) {
+  var m = Math.round((ms || 0) / 60000);
+  if (m < 1) return t('durShort');
+  if (m < 60) return t('durMin').replace('{m}', m);
+  return t('durHour').replace('{h}', Math.floor(m / 60)).replace('{m}', m % 60);
+}
+
+function renderHistory() {
+  var box = $('history');
+  box.innerHTML = '';
+  $('historyClear').hidden = !connHistory.length;
+  if (!connHistory.length) {
+    var empty = document.createElement('div');
+    empty.className = 'muted small';
+    empty.textContent = t('historyEmpty');
+    box.appendChild(empty);
+    return;
+  }
+  connHistory.slice(-100).reverse().forEach(function (h) {
+    var row = document.createElement('div');
+    row.className = 'history-row' + (HISTORY_ALERT[h.e] ? ' alert' : '');
+    var when = document.createElement('span');
+    when.className = 'muted';
+    when.textContent = new Date(h.at).toLocaleString(LANG === 'tr' ? 'tr-TR' : 'en-GB', {
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+    });
+    var what = document.createElement('span');
+    what.textContent = t(HISTORY_TEXT[h.e] || 'unknownDevice')
+      .replace('{who}', h.who)
+      .replace('{via}', t(h.via === 'internet' ? 'viaInternet' : 'viaLan'))
+      .replace('{time}', durationText(h.ms))
+      .replace(/\.$/, '');
+    row.appendChild(when);
+    row.appendChild(what);
+    box.appendChild(row);
+  });
+}
+
+$('historyClear').onclick = function () {
+  if (!confirm(t('historyClearAsk'))) return;
+  connHistory = [];
+  storageSet('ayva-history', '[]');
+  renderHistory();
+};
+
+renderHistory();
 
 function connectCloud(info) {
   if (cloudSignal) cloudSignal.stop();

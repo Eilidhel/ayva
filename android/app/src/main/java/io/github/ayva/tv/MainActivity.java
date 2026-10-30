@@ -30,6 +30,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,8 +40,9 @@ import java.util.List;
  * Start screen: lists the computers found on the network. Connects by itself
  * to the computer used last time, or to the only one found. On phones it also
  * keeps fixed addresses (https://ayva.<name>.workers.dev) for use away from home.
+ * A newer app from GitHub Releases is offered at the top of the list.
  */
-public class MainActivity extends Activity implements Discovery.Listener {
+public class MainActivity extends Activity implements Discovery.Listener, Updater.Listener {
 
     // Quince colours, same as the web pages (public/style.css).
     private static final int BG = 0xFF16130E;
@@ -52,6 +54,7 @@ public class MainActivity extends Activity implements Discovery.Listener {
     private static final long AUTO_CONNECT_WINDOW_MS = 4000;
 
     private Discovery discovery;
+    private Updater updater;
     private LinearLayout list;
     private TextView title;
     private TextView help;
@@ -66,6 +69,7 @@ public class MainActivity extends Activity implements Discovery.Listener {
         super.onCreate(savedInstanceState);
         setContentView(buildLayout());
         discovery = new Discovery(this, this);
+        updater = new Updater(this, this);
         render();
         handleLink(getIntent());
     }
@@ -82,6 +86,8 @@ public class MainActivity extends Activity implements Discovery.Listener {
         startedAt = System.currentTimeMillis();
         discovery.start();
         handler.postDelayed(this::showNotFoundHint, 8000);
+        updater.resume();
+        updater.check(false);
     }
 
     @Override
@@ -97,7 +103,8 @@ public class MainActivity extends Activity implements Discovery.Listener {
         title.setText(hosts.isEmpty() ? R.string.searching : R.string.found);
         if (!hosts.isEmpty()) help.setText(isTv() ? R.string.help : R.string.help_phone);
 
-        if (autoConnect && maybeAutoConnect(hosts)) return;
+        // With an update waiting, stay here so the update button can be seen.
+        if (autoConnect && updater.state() != Updater.State.AVAILABLE && maybeAutoConnect(hosts)) return;
         render();
     }
 
@@ -106,15 +113,18 @@ public class MainActivity extends Activity implements Discovery.Listener {
         if (focused != null && focused.getTag() instanceof String) focusedKey = (String) focused.getTag();
 
         list.removeAllViews();
-        Button toFocus = null;
+        Button toFocus = addUpdateButton();
         for (final Discovery.Host host : lastHosts) {
             String status = host.live ? "  ●  " + getString(R.string.live) : "  ·  " + getString(R.string.ready);
             Button b = hostButton(host.name + status, host.live, v -> open(host));
             b.setTag(host.key());
             list.addView(b);
-            if (toFocus == null || host.key().equals(focusedKey)) toFocus = b;
+            if (toFocus == null) toFocus = b;
         }
         if (!isTv()) addAddressButtons();
+        list.addView(versionButton());
+        View same = list.findViewWithTag(focusedKey);
+        if (same != null) toFocus = (Button) same;
         if (toFocus != null) toFocus.requestFocus();
     }
 
@@ -185,6 +195,52 @@ public class MainActivity extends Activity implements Discovery.Listener {
 
     private SharedPreferences prefs() {
         return getSharedPreferences("ayva", MODE_PRIVATE);
+    }
+
+    // ---- Updates ----
+
+    @Override
+    public void onUpdateState() {
+        render();
+        if (updater.state() == Updater.State.UP_TO_DATE && checkAsked) {
+            checkAsked = false;
+            Toast.makeText(this, getString(R.string.version_latest, updater.installedVersion()), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private boolean checkAsked;
+
+    // The update button, while there is something to show; null otherwise.
+    private Button addUpdateButton() {
+        String label;
+        switch (updater.state()) {
+            case AVAILABLE: label = getString(R.string.update_available, updater.latestVersion()); break;
+            case DOWNLOADING: label = getString(R.string.update_downloading, updater.progress()); break;
+            case INSTALLING: label = getString(R.string.update_installing); break;
+            default: return null;
+        }
+        Button b = hostButton(label, true, v -> updater.install());
+        b.setTag("update");
+        list.addView(b);
+        return b;
+    }
+
+    private Button versionButton() {
+        String v = updater.installedVersion();
+        int label;
+        switch (updater.state()) {
+            case CHECKING: label = R.string.version_checking; break;
+            case UP_TO_DATE: label = R.string.version_latest; break;
+            case FAILED: label = R.string.version_check_failed; break;
+            default: label = R.string.version_check;
+        }
+        Button b = hostButton(getString(label, v), false, x -> {
+            checkAsked = true;
+            updater.check(true);
+        });
+        b.setTag("version");
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        return b;
     }
 
     // ---- Fixed addresses (phones) ----

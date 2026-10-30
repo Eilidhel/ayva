@@ -176,6 +176,18 @@ select {
 .device .tag.alert { color: var(--live); }
 .approval-box { width: min(440px, 100%); }
 
+#historyBox summary { cursor: pointer; }
+.history { max-height: 320px; overflow-y: auto; margin: 8px 0; }
+.history-row {
+  display: flex;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--panel-2);
+  font-size: 0.85rem;
+}
+.history-row .muted { flex: none; }
+.history-row.alert span:last-child { color: var(--live); }
+
 .device-name { min-width: 0; overflow-wrap: anywhere; }
 .rename-input {
   flex: 1;

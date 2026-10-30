@@ -15,4 +15,12 @@
     <string name="remove">Kaldır</string>
     <string name="remove_address">%1$s bu listeden kaldırılsın mı?</string>
     <string name="saved">İndirilenler/Ayva klasörüne kaydedildi: %1$s</string>
+    <string name="update_available">⬆  Ayva %1$s sürümüne güncelle</string>
+    <string name="update_downloading">Güncelleme indiriliyor… %%%1$d</string>
+    <string name="update_installing">Güncelleme kuruluyor…</string>
+    <string name="update_failed">Güncelleme kurulamadı. Daha sonra yeniden dene.</string>
+    <string name="version_check">Ayva %1$s · Güncellemeleri denetle</string>
+    <string name="version_checking">Ayva %1$s · Denetleniyor…</string>
+    <string name="version_latest">Ayva %1$s · Güncel</string>
+    <string name="version_check_failed">Ayva %1$s · Güncelleme denetlenemedi</string>
 </resources>

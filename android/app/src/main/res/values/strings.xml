@@ -15,4 +15,12 @@
     <string name="remove">Remove</string>
     <string name="remove_address">Remove %1$s from this list?</string>
     <string name="saved">Saved to Downloads/Ayva: %1$s</string>
+    <string name="update_available">⬆  Update to Ayva %1$s</string>
+    <string name="update_downloading">Downloading the update… %1$d%%</string>
+    <string name="update_installing">Installing the update…</string>
+    <string name="update_failed">The update could not be installed. Try again later.</string>
+    <string name="version_check">Ayva %1$s · Check for updates</string>
+    <string name="version_checking">Ayva %1$s · Checking…</string>
+    <string name="version_latest">Ayva %1$s · Up to date</string>
+    <string name="version_check_failed">Ayva %1$s · Could not check for updates</string>
 </resources>

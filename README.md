@@ -100,6 +100,8 @@ Only devices you remembered when allowing them get these boxes, never one you le
 
 **PIN.** Under **Remembered devices**, **PIN** sets a 4–8 digit PIN for a device. The device then has to enter it on every connection before it may start sharing or control, so a stolen unlocked phone is not enough. The PIN is stored on the computer only as a salted hash, the device sends a hash tied to that connection, and five wrong tries lock the device's rights for 15 minutes (the computer tells you).
 
+**Connection history.** **Connection history** at the bottom of the app shows who connected and when, how long they stayed, whom you let in or turned away, and who started sharing, recorded or turned the microphone on. Suspicious events, such as a wrong PIN or a device that could not prove its key, show in red. The history stays on this computer (the last 300 events), and **Clear history** deletes it.
+
 ## Recording on the phone
 
 **Record** on the phone or browser records what it is watching, on that device. When you stop, the video (MP4 where supported, otherwise WebM) appears with a **Save** button. Nothing extra goes over the network. The computer shows that device as **recording** and sends a notification, so recordings are never secret.
@@ -120,6 +122,8 @@ The internet link changes each time internet access is turned on, so Ayva cannot
 
 The installed app checks GitHub Releases for a new version at startup and every few hours, and downloads it in the background.
 Restarting would end a running share, so Ayva never installs on its own: click the notification or **Restart to update** in the tray menu when it suits you. **Check for updates** in the tray menu checks right away.
+
+The Android app (0.8.1 and later) also checks GitHub Releases when it opens. When there is a new version, **⬆ Update to Ayva x.y.z** appears at the top of the list: tap it to download the update and open Android's own install prompt. The first time, Android asks you to let Ayva install apps. The version line at the bottom of the list checks right away. Going from 0.8.0 to 0.8.1 is a one-time manual install.
 
 ## Browser only (no install)
 
