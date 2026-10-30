@@ -15,7 +15,8 @@ android {
         minSdk 21
         targetSdk 34
         versionCode appVersionCode
-        versionName appVersion
+        // -PnameSuffix=-test.N marks test builds, so they can be told apart on the phone.
+        versionName appVersion + (project.findProperty('nameSuffix') ?: '')
     }
 
     signingConfigs {

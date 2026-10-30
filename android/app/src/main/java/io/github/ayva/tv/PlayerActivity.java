@@ -10,16 +10,26 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.ConsoleMessage;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.widget.TextView;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Full-screen player. Shows the computer's watch page, which receives the
@@ -35,6 +45,8 @@ public class PlayerActivity extends Activity {
     private static final int REQUEST_FILES = 2;
 
     private WebView web;
+    private TextView problems; // what failed to load, for troubleshooting
+    private final List<String> problemLines = new ArrayList<>();
     private String origin; // the computer's address; the page may not leave it
     private volatile String currentOrigin;
     private PermissionRequest pendingMic;
@@ -74,16 +86,53 @@ public class PlayerActivity extends Activity {
             public void doUpdateVisitedHistory(WebView view, String u, boolean isReload) {
                 currentOrigin = originOf(u);
             }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                problem(pathOf(request.getUrl()) + ": " + error.getDescription());
+            }
+
+            @Override
+            public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
+                problem(pathOf(request.getUrl()) + ": HTTP " + response.getStatusCode());
+            }
         });
         web.setWebChromeClient(new Chrome());
         if (DeviceKey.supported()) {
             web.addJavascriptInterface(new DeviceKey(() -> origin != null && origin.equals(currentOrigin)), "AyvaKey");
         }
         web.addJavascriptInterface(new FileSaver(this), "AyvaFiles");
-        setContentView(web);
+        FrameLayout root = new FrameLayout(this);
+        root.addView(web);
+        problems = new TextView(this);
+        problems.setTextColor(Color.WHITE);
+        problems.setBackgroundColor(0xCC5A1A1A);
+        problems.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        int pad = Math.round(12 * getResources().getDisplayMetrics().density);
+        problems.setPadding(pad, pad * 3, pad, pad);
+        problems.setVisibility(View.GONE);
+        problems.setOnClickListener(v -> v.setVisibility(View.GONE));
+        root.addView(problems, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP));
+        setContentView(root);
         hideSystemUi();
 
         web.loadUrl(url);
+    }
+
+    // Only the path: links may carry an access key, which must not end up in a screenshot.
+    private static String pathOf(Uri u) {
+        return u == null ? "?" : (u.getPath() == null || u.getPath().isEmpty() ? "/" : u.getPath());
+    }
+
+    // Shown on top of the page until tapped away, so a screenshot says what went wrong.
+    private void problem(String line) {
+        runOnUiThread(() -> {
+            if (problemLines.size() >= 6 || problemLines.contains(line)) return;
+            problemLines.add(line);
+            problems.setText(getString(R.string.load_problems) + "\n" + android.text.TextUtils.join("\n", problemLines));
+            problems.setVisibility(View.VISIBLE);
+        });
     }
 
     private static String originOf(String url) {
@@ -94,6 +143,16 @@ public class PlayerActivity extends Activity {
     }
 
     private class Chrome extends WebChromeClient {
+        @Override
+        public boolean onConsoleMessage(ConsoleMessage m) {
+            if (m.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                String text = m.message().replaceAll("https?://[^\\s/]+", "").replaceAll("\\?\\S*", "");
+                problem("JS: " + (text.length() > 140 ? text.substring(0, 140) + "…" : text)
+                        + " (" + pathOf(Uri.parse(m.sourceId())) + ":" + m.lineNumber() + ")");
+            }
+            return false;
+        }
+
         // Without this, WebView draws a grey Android logo on the video before it plays.
         @Override
         public Bitmap getDefaultVideoPoster() {
