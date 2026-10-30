@@ -83,8 +83,12 @@ Windows does not let other programs control windows running as administrator (su
 
 ## Starting from the phone or TV
 
-Tick **Remembered devices can start and stop sharing** in the app. A remembered device then shows **Start sharing** while it waits, and **Stop sharing** while it watches. It shares the computer's main screen (with sound, unless you untick that in the picker), and the computer shows a notification every time.
-Only devices you remembered when allowing them can do this, never one you let in just once. The option is off by default; **Forget** takes the right away from a device at once.
+Under **Remembered devices** in the app, each device has two boxes, both off by default:
+
+- **Can start sharing:** the device shows **Start sharing** while it waits, and **Stop sharing** while it watches. It shares the computer's main screen (with sound, unless you untick that in the picker), and the computer shows a notification every time.
+- **Can control:** while sharing, the device can use the mouse and keyboard (and send files) without you pressing **Allow control**. Other devices still only watch. **Ctrl+Alt+K** stops it until sharing starts again.
+
+Only devices you remembered when allowing them get these boxes, never one you let in just once. **Forget** takes both rights away at once.
 
 ## Recording on the phone
 

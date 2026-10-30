@@ -81,8 +81,12 @@ Windows, yönetici olarak çalışan pencerelerin (ör. Görev Yöneticisi) kont
 
 ## Telefondan ya da TV'den başlatma
 
-Programda **Hatırlanan cihazlar paylaşımı başlatıp durdurabilir**'i işaretle. Hatırlanan bir cihaz beklerken **Paylaşımı başlat**, izlerken **Paylaşımı durdur** butonunu görür. Bilgisayarın ana ekranı paylaşılır (seçicide işareti kaldırmadıysan sesiyle birlikte) ve bilgisayar her seferinde bildirim gösterir.
-Bunu yalnızca izin verirken hatırladığın cihazlar yapabilir; bir kerelik izin verdiklerin yapamaz. Seçenek varsayılan olarak kapalıdır. **Unut** bir cihazın bu hakkını hemen kaldırır.
+Programdaki **Hatırlanan cihazlar** listesinde her cihazın yanında iki kutu var, ikisi de varsayılan olarak kapalı:
+
+- **Paylaşımı başlatabilir:** cihaz beklerken **Paylaşımı başlat**, izlerken **Paylaşımı durdur** butonunu görür. Bilgisayarın ana ekranı paylaşılır (seçicide işareti kaldırmadıysan sesiyle birlikte) ve bilgisayar her seferinde bildirim gösterir.
+- **Kontrol edebilir:** paylaşım sırasında cihaz, sen **Kontrolü aç**'a basmadan fareyi ve klavyeyi kullanabilir (dosya da gönderebilir). Diğer cihazlar yalnızca izler. **Ctrl+Alt+K** bunu paylaşım yeniden başlayana kadar durdurur.
+
+Bu kutular yalnızca izin verirken hatırladığın cihazlarda çıkar; bir kerelik izin verdiklerinde çıkmaz. **Unut** iki hakkı da hemen kaldırır.
 
 ## Telefonda kayıt
 

@@ -46,8 +46,9 @@ function updateUi() {
   var canSend = live && fileTargets().length > 0;
   $('sendFileBtn').hidden = !canSend;
   $('sendClipBtn').hidden = !canSend;
-  $('controlHint').hidden = !live || !controlOn;
-  $('controlHint').textContent = t('controlHint');
+  var deviceControl = !controlOn && Object.keys(viewerInfo).some(controlAllowed);
+  $('controlHint').hidden = !live || !(controlOn || deviceControl);
+  $('controlHint').textContent = t(deviceControl ? 'controlHintDevices' : 'controlHint');
   $('viewerCount').textContent = Object.keys(viewers).length;
   if (live) setStatus('');
   else if (signal && signal.ws && signal.ws.readyState === WebSocket.OPEN) setStatus(t('notStreaming'));
@@ -131,7 +132,7 @@ function openTransferChannel(id, pc) {
         receivesFiles[id] = !!msg.files;
         updateUi();
       } else if (msg.t === 'batch-start') {
-        if (!controlOn) {
+        if (!controlAllowed(id)) {
           transfers[id].send({ t: 'refused' });
           return;
         }
@@ -140,7 +141,7 @@ function openTransferChannel(id, pc) {
         if (batch && window.ayva) finishBatch(batch.key);
         batch = null;
       } else if (msg.t === 'clip' && typeof msg.text === 'string') {
-        if (!controlOn) {
+        if (!controlAllowed(id)) {
           transfers[id].send({ t: 'refused' });
           return;
         }
@@ -155,7 +156,7 @@ function openTransferChannel(id, pc) {
       meta.localId = id + ':file:' + (++fileCounter);
       meta.batch = batch;
       meta.batchKey = batch ? batch.key : meta.localId;
-      meta.accepted = controlOn;
+      meta.accepted = controlAllowed(id);
       if (!meta.accepted) {
         // Inside a batch the refusal was already sent at batch-start.
         if (!batch) transfers[id].send({ t: 'refused' });
@@ -246,54 +247,80 @@ function sendClipboard() {
 // ---- Remote control ----
 // Each viewer gets a "control" data channel. Its messages are handed to the
 // desktop app, which turns them into mouse/keyboard input, but only while the
-// user has switched control on here. Off by default, and on every restart.
+// user has switched control on here, or for remembered devices the user marked
+// "can control" (while sharing). Off by default, and on every restart.
+// Ctrl+Alt+K stops both until sharing starts again.
 
 var channels = {}; // viewer id -> RTCDataChannel
 var controlSupported = false;
-var controlOn = false;
+var controlOn = false; // the Allow control button: every viewer
+var controlPaused = false; // Ctrl+Alt+K also holds back "can control" devices
 var absolutePointer = false; // a whole screen is shared, so taps can point at a spot
 var lastInput = {}; // viewer id -> time of the last control message
 
 if (window.ayva && window.ayva.controlSupported) {
   window.ayva.controlSupported().then(function (ok) {
     controlSupported = !!ok;
-    updateUi();
+    applyControl();
   });
   window.ayva.onControlForcedOff(function () {
     controlOn = false;
-    broadcastControlState();
-    dropUnallowedMics();
-    updateUi();
+    controlPaused = true;
+    applyControl();
   });
 }
 
-function controlState() {
-  return JSON.stringify({ t: 'state', enabled: controlOn, absolute: absolutePointer });
+function canControlFrom(deviceId) {
+  return !!deviceId && trusted.some(function (d) { return d.id === deviceId && d.canControl; });
+}
+
+function controlAllowed(id) {
+  var info = viewerInfo[id];
+  return controlOn || (controlSupported && !!stream && !controlPaused && !!info && canControlFrom(info.deviceId));
+}
+
+function controlState(id) {
+  return JSON.stringify({ t: 'state', enabled: controlAllowed(id), absolute: absolutePointer });
 }
 
 function broadcastControlState() {
   Object.keys(channels).forEach(function (id) {
     var dc = channels[id];
-    if (dc.readyState === 'open') dc.send(controlState());
+    if (dc.readyState === 'open') dc.send(controlState(id));
   });
 }
 
 function setControl(on) {
   if (!controlSupported) return;
-  window.ayva.setControl(on).then(function (enabled) {
-    controlOn = !!enabled;
+  controlOn = !!on;
+  if (controlOn) controlPaused = false;
+  applyControl();
+}
+
+// The desktop app takes input while anyone here may control; which viewer
+// that is gets checked per message below.
+function applyControl() {
+  if (!controlSupported) {
+    updateUi();
+    renderDevices();
+    return;
+  }
+  var needed = Object.keys(viewerInfo).some(controlAllowed) || controlOn;
+  window.ayva.setControl(needed).then(function (enabled) {
+    if (!enabled) controlOn = false;
     broadcastControlState();
     dropUnallowedMics();
     updateUi();
+    renderDevices();
   });
 }
 
 function openControlChannel(id, pc) {
   var dc = pc.createDataChannel('control', { ordered: true });
   channels[id] = dc;
-  dc.onopen = function () { dc.send(controlState()); };
+  dc.onopen = function () { dc.send(controlState(id)); };
   dc.onmessage = function (e) {
-    if (!controlOn) return;
+    if (!controlAllowed(id)) return;
     var msg;
     try { msg = JSON.parse(e.data); } catch (err) { return; }
     lastInput[id] = Date.now();
@@ -412,7 +439,7 @@ function renderStats() {
   $('stats').innerHTML = ids.map(function (id) {
     var s = viewerStats[id];
     var title = '<b>' + escapeHtml(deviceLabel(viewerInfo[id])) + '</b>';
-    if (controlOn && lastInput[id] && Date.now() - lastInput[id] < 3000) title += ' · ' + mark(t('controlling'), true);
+    if (controlAllowed(id) && lastInput[id] && Date.now() - lastInput[id] < 3000) title += ' · ' + mark(t('controlling'), true);
     var parts = [title];
     var snd = senderStats[id];
     if (snd) {
@@ -632,7 +659,7 @@ function forget(deviceId) {
   saveTrusted();
   renderDevices();
   broadcastCaps();
-  dropUnallowedMics();
+  applyControl();
 }
 
 // One line in a device list. deviceId (optional) adds a rename button that
@@ -707,6 +734,8 @@ function renderDevices() {
     var info = viewerInfo[id];
     var tags = [{ text: t(info.remote ? 'viaInternet' : 'viaLan'), cls: info.remote ? 'net' : '' }];
     if (isTrusted(info.deviceId)) tags.push({ text: t('remembered') });
+    if (canRemoteStart(id)) tags.push({ text: t('canStartTag') });
+    if (!controlOn && controlAllowed(id)) tags.push({ text: t('controlTag'), cls: 'alert' });
     if (info.recording) tags.push({ text: t('recordingTag'), cls: 'alert' });
     if (mics[id]) tags.push({ text: t('talkingTag'), cls: 'alert' });
     list.appendChild(deviceRow(deviceLabel(info), tags, t('kick'), function () { kick(id); }, info.deviceId));
@@ -716,21 +745,51 @@ function renderDevices() {
   var tl = $('trusted');
   tl.innerHTML = '';
   trusted.forEach(function (d) {
-    tl.appendChild(deviceRow(deviceNames[d.id] || d.name, [], t('forget'), function () { forget(d.id); }, d.id));
+    var row = deviceRow(deviceNames[d.id] || d.name, [], t('forget'), function () { forget(d.id); }, d.id);
+    var actions = row.querySelector('.row');
+    if (controlSupported) actions.prepend(permissionBox(d, 'canControl'));
+    if (window.ayva && window.ayva.remoteStart) actions.prepend(permissionBox(d, 'canStart'));
+    tl.appendChild(row);
   });
 }
 
-// ---- Starting and stopping from a remembered device (desktop app) ----
-// Off by default. When the user turns it on, remembered devices (not ones
-// merely let in this time) can start sharing the main screen and stop it.
-// Each time, this computer shows a notification saying who did it.
+// A per-device permission tick box: 'canStart' or 'canControl'.
+function permissionBox(d, key) {
+  var label = document.createElement('label');
+  label.className = 'row small';
+  label.style.gap = '6px';
+  label.title = t(key + 'Hint');
+  var box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = !!d[key];
+  box.onchange = function () { setPermission(d.id, key, box.checked); };
+  var text = document.createElement('span');
+  text.textContent = t(key);
+  label.appendChild(box);
+  label.appendChild(text);
+  return label;
+}
 
-var remoteStartOn = storageGet('ayva-remote-start') === '1';
-$('remoteStart').checked = remoteStartOn;
+function setPermission(deviceId, key, on) {
+  trusted.forEach(function (d) { if (d.id === deviceId) d[key] = !!on; });
+  saveTrusted();
+  renderDevices();
+  broadcastCaps();
+  applyControl();
+}
+
+// ---- Starting and stopping from a remembered device (desktop app) ----
+// Off for every device. The user ticks it here per remembered device (never
+// for one merely let in this time); that device can then start sharing the
+// main screen and stop it. Each time, this computer shows a notification.
+
+function canStartFrom(deviceId) {
+  return !!deviceId && trusted.some(function (d) { return d.id === deviceId && d.canStart; });
+}
 
 function canRemoteStart(id) {
   var info = viewerInfo[id];
-  return remoteStartOn && !!(window.ayva && window.ayva.remoteStart) && !!info && isTrusted(info.deviceId);
+  return !!(window.ayva && window.ayva.remoteStart) && !!info && canStartFrom(info.deviceId);
 }
 
 // Tells a viewer whether to offer the start/stop buttons.
@@ -771,12 +830,6 @@ function remoteCapture(absolute) {
   return Promise.resolve(capture()).then(function () { return !!stream; });
 }
 
-$('remoteStart').onchange = function () {
-  remoteStartOn = this.checked;
-  storageSet('ayva-remote-start', remoteStartOn ? '1' : '0');
-  broadcastCaps();
-};
-
 // ---- Recording on a viewer ----
 // A phone can record the stream on its own; it tells us, so the user here can
 // see who is recording.
@@ -798,7 +851,7 @@ var mics = {}; // viewer id -> { pc, audio }
 
 function micAllowed(id) {
   var info = viewerInfo[id];
-  return !!stream && !!info && (controlOn || isTrusted(info.deviceId));
+  return !!stream && !!info && (controlAllowed(id) || isTrusted(info.deviceId));
 }
 
 function micOffer(id, sdp) {
@@ -1141,7 +1194,7 @@ function capture() {
     if (window.ayva && window.ayva.hideFromCapture) window.ayva.hideFromCapture(true);
     $('preview').srcObject = s;
     if (!switching) Object.keys(viewers).forEach(connectViewer);
-    updateUi();
+    applyControl();
   }).catch(function (err) {
     if (err && err.name === 'NotAllowedError') return; // user cancelled the picker
     setStatus(t('shareFailed') + (err && err.message ? err.message : err), true);
@@ -1150,7 +1203,8 @@ function capture() {
 
 function stopSharing() {
   if (!stream) return;
-  if (controlOn) setControl(false);
+  controlOn = false;
+  controlPaused = false;
   if (window.ayva && window.ayva.hideFromCapture) window.ayva.hideFromCapture(false);
   stream.getTracks().forEach(function (track) { track.stop(); });
   stream = null;
@@ -1162,7 +1216,7 @@ function stopSharing() {
     closePeer(id);
     viaSignal(id).send({ type: 'signal', to: id, data: { kind: 'stopped' } });
   });
-  updateUi();
+  applyControl();
 }
 
 // ---- Signaling ----
@@ -1209,14 +1263,14 @@ function viewerLeft(id) {
   renderDevices();
   closePeer(id);
   // A viewer that leaves mid-drag must not leave a button or key held down.
-  if (controlOn) window.ayva.sendControl({ t: 'release' });
+  if (controlSupported) window.ayva.sendControl({ t: 'release' });
   delete lastInput[id];
   delete viewers[id];
   delete viewerStats[id];
   delete senderStats[id];
   delete lastSender[id];
   delete viewerSignal[id];
-  updateUi();
+  applyControl();
   renderStats();
 }
 
@@ -1239,8 +1293,7 @@ function handleHubMessage(msg, sig) {
     viewers[msg.id] = null;
     connectViewer(msg.id);
     sendCaps(msg.id);
-    updateUi();
-    renderDevices();
+    applyControl();
   } else if (msg.type === 'viewer-left') {
     signalingLost(msg.id);
   } else if (msg.type === 'signal') {
@@ -1316,7 +1369,6 @@ $('revealBtn').onclick = function () {
   updateUi();
 };
 if (window.ayva) $('audioTip').textContent = t('tvAppTip');
-if (window.ayva && window.ayva.remoteStart) $('remoteStartRow').hidden = false;
 if (window.ayva && window.ayva.getStartWithWindows) {
   $('startWithWindowsRow').hidden = false;
   window.ayva.getStartWithWindows().then(function (on) { $('startWithWindows').checked = !!on; });
