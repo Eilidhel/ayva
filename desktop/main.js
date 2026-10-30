@@ -14,6 +14,7 @@ const input = require('./input');
 const { Tunnel } = require('./tunnel');
 const { Cloud } = require('./cloud');
 const { Receiver } = require('./files');
+const { Updater } = require('./updater');
 
 const FIRST_PORT = 3000;
 const LAST_PORT = 3010;
@@ -304,6 +305,7 @@ const STARTED_HIDDEN = process.argv.includes('--hidden'); // launched with Windo
 let tray = null;
 let quitting = false;
 let toldAboutTray = false;
+const updater = new Updater(TR, () => updateTrayMenu());
 
 function showWindow() {
   if (!win) return;
@@ -323,6 +325,7 @@ function setStartWithWindows(on) {
 
 function updateTrayMenu() {
   if (!tray) return;
+  const updateItem = updater.menuItem();
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: TR() ? 'Ayva\'yı aç' : 'Open Ayva', click: showWindow },
     {
@@ -331,6 +334,7 @@ function updateTrayMenu() {
       checked: startsWithWindows(),
       click: (item) => setStartWithWindows(item.checked),
     },
+    ...(updateItem ? [updateItem] : []),
     { type: 'separator' },
     { label: TR() ? 'Çıkış' : 'Quit', click: () => { quitting = true; app.quit(); } },
   ]));
@@ -428,6 +432,7 @@ app.whenReady().then(async () => {
   cloud.updateIfNeeded().catch(() => {});
   createWindow(server.port);
   createTray();
+  updater.start();
 
   globalShortcut.register(CONTROL_OFF_SHORTCUT, () => {
     setControl(false);

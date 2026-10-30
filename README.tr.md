@@ -85,6 +85,11 @@ Pencereyi kapatınca Ayva saat yanındaki simgede çalışmaya devam eder, TV'le
 Programdaki (ya da simge menüsündeki) **Windows açılınca Ayva'yı arka planda başlat** seçeneğiyle Ayva otomatik açılır.
 İnternet linki her açılışta değiştiği için yeniden başlatmadan sonra dışarıdan bağlanmak için yeni linki görmen gerekir.
 
+## Güncellemeler
+
+Kurulu program açılışta ve birkaç saatte bir GitHub Releases'te yeni sürüm olup olmadığına bakar, varsa arka planda indirir.
+Yeniden başlatmak süren paylaşımı keseceği için Ayva kendi kendine kurmaz: uygun olduğunda bildirime ya da simge menüsündeki **Yeniden başlat ve güncelle**'ye tıkla. **Güncellemeleri denetle** hemen kontrol eder.
+
 ## Sadece tarayıcı (kurulumsuz)
 
 Sunucu masaüstü programı olmadan da çalışır (uzaktan kontrol, internet erişimi ve izleyiciden dosya almak için program gerekir):

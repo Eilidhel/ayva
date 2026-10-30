@@ -41,7 +41,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
           mv app/build/outputs/apk/release/app-release.apk ../Ayva-TV.apk
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: android-apk
           path: Ayva-TV.apk
@@ -55,10 +55,14 @@ jobs:
           node-version: '24'
       - run: npm ci
       - run: npx electron-builder --win --publish never
-      - uses: actions/upload-artifact@v5
+      # latest.yml and the blockmap let installed copies find and fetch updates.
+      - uses: actions/upload-artifact@v6
         with:
           name: windows-installer
-          path: dist/*.exe
+          path: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/latest.yml
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
@@ -73,3 +77,5 @@ jobs:
           files: |
             *.apk
             *.exe
+            *.exe.blockmap
+            latest.yml

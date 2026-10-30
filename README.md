@@ -87,6 +87,11 @@ Closing the window keeps Ayva running in the system tray, so TVs can still find 
 Tick **Start Ayva in the background when Windows starts** in the app (or in the tray menu) to launch it automatically.
 The internet link changes each time internet access is turned on, so Ayva cannot yet be reached from outside after a restart without looking at the new link.
 
+## Updates
+
+The installed app checks GitHub Releases for a new version at startup and every few hours, and downloads it in the background.
+Restarting would end a running share, so Ayva never installs on its own: click the notification or **Restart to update** in the tray menu when it suits you. **Check for updates** in the tray menu checks right away.
+
 ## Browser only (no install)
 
 The server also runs on its own, without the desktop app (remote control, internet access and files from viewers need the app):

@@ -24,6 +24,7 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "koffi": "^2.16.3",
     "qrcode": "^1.5.4",
     "ws": "^8.18.0"
@@ -57,6 +58,13 @@
     "directories": {
       "output": "dist"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Eilidhel",
+        "repo": "ayva"
+      }
+    ],
     "win": {
       "target": [
         "nsis"
