@@ -43,6 +43,9 @@
   <div class="controls">
     <button id="hideUiBtn" class="secondary" data-i18n="hideUi"></button>
     <button id="sendBtn" class="secondary" data-i18n="send"></button>
+    <button id="micBtn" class="secondary" data-i18n="micOn" hidden></button>
+    <button id="recordBtn" class="secondary" data-i18n="record" hidden></button>
+    <button id="remoteStopBtn" class="secondary" data-i18n="stopShare" hidden></button>
     <button id="kbBtn" class="secondary" data-i18n="keyboard"></button>
     <button id="unmuteBtn" data-i18n="unmute" hidden></button>
     <button id="fullscreenBtn" class="secondary" data-i18n="fullscreen"></button>
@@ -84,6 +87,8 @@
     <div class="spinner"></div>
     <p id="waitingText" class="muted"></p>
     <p id="waitingCodeRow" class="muted small"><span id="waitingCodeLabel" data-i18n="yourCode"></span>: <span id="waitingCode"></span></p>
+    <!-- Remembered devices may start the share from here, if the computer allows it -->
+    <button id="remoteStartBtn" data-i18n="startShare" hidden></button>
   </div>
 
   <script src="/common.js"></script>
@@ -91,5 +96,7 @@
   <script src="/cloud.js"></script>
   <script src="/control.js"></script>
   <script src="/inbox.js"></script>
+  <script src="/record.js"></script>
+  <script src="/mic.js"></script>
 </body>
 </html>

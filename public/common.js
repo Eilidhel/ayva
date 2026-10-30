@@ -183,6 +183,26 @@ var STRINGS = {
     change: 'Change code',
     peerFailed: 'Connection problem. Retrying…',
     clear: 'Clear',
+    remoteStartSetting: 'Remembered devices can start and stop sharing (shares the main screen)',
+    remoteStarted: '{who} started sharing.',
+    remoteStopped: '{who} stopped sharing.',
+    remoteStartFailed: '{who} could not start sharing: ',
+    remoteStarting: 'Starting…',
+    recordingTitle: 'A device is recording the stream',
+    recordingTag: 'recording',
+    talkingTag: 'microphone on',
+    record: 'Record',
+    recordStop: 'Stop recording',
+    recordFailed: 'Recording could not start on this device.',
+    recordSaved: 'Recording ready. Tap Save to keep it.',
+    micOn: 'Talk',
+    micOff: 'Turn mic off',
+    micStarting: 'Microphone…',
+    micLive: 'Your microphone is playing on the computer.',
+    micNeedsHttps: 'The microphone only works when Ayva is opened over https (the fixed address or the internet link), not on the home network address.',
+    micBlocked: 'Microphone permission was denied.',
+    micFailed: 'The microphone could not connect.',
+    micRefused: 'The computer accepts the microphone only from remembered devices, or while remote control is on.',
   },
   tr: {
     tagline: 'Ekranını herhangi bir TV\'de göster. Kablo yok, sadece bir link.',
@@ -366,6 +386,26 @@ var STRINGS = {
     change: 'Kodu değiştir',
     peerFailed: 'Bağlantı sorunu. Tekrar deneniyor…',
     clear: 'Sil',
+    remoteStartSetting: 'Hatırlanan cihazlar paylaşımı başlatıp durdurabilir (ana ekran paylaşılır)',
+    remoteStarted: '{who} paylaşımı başlattı.',
+    remoteStopped: '{who} paylaşımı durdurdu.',
+    remoteStartFailed: '{who} paylaşımı başlatamadı: ',
+    remoteStarting: 'Başlatılıyor…',
+    recordingTitle: 'Bir cihaz yayını kaydediyor',
+    recordingTag: 'kaydediyor',
+    talkingTag: 'mikrofon açık',
+    record: 'Kayıt',
+    recordStop: 'Kaydı bitir',
+    recordFailed: 'Bu cihazda kayıt başlatılamadı.',
+    recordSaved: 'Kayıt hazır. Saklamak için Kaydet\'e dokun.',
+    micOn: 'Konuş',
+    micOff: 'Mikrofonu kapat',
+    micStarting: 'Mikrofon…',
+    micLive: 'Mikrofonun bilgisayarda çalıyor.',
+    micNeedsHttps: 'Mikrofon yalnızca Ayva https ile açıldığında çalışır (sabit adres ya da internet linki); ev ağı adresinde çalışmaz.',
+    micBlocked: 'Mikrofon izni verilmedi.',
+    micFailed: 'Mikrofon bağlanamadı.',
+    micRefused: 'Bilgisayar mikrofonu yalnızca hatırlanan cihazlardan ya da uzaktan kontrol açıkken kabul ediyor.',
   },
 };
 
@@ -435,6 +475,22 @@ function tuneOpus(sdp) {
   var line = 'a=fmtp:' + pt + ' ' + Object.keys(params).map(function (k) { return k + '=' + params[k]; }).join(';');
   if (existing) return sdp.replace(fmtp, line);
   return sdp.replace(match[0], match[0] + '\r\n' + line);
+}
+
+// ICE candidates can arrive before the remote description they belong to;
+// hold them until it is set (call flushCandidates right after).
+function addCandidate(pc, candidate) {
+  if (pc.remoteDescription) {
+    pc.addIceCandidate(candidate).catch(function () {});
+    return;
+  }
+  pc.pendingCandidates = pc.pendingCandidates || [];
+  pc.pendingCandidates.push(candidate);
+}
+
+function flushCandidates(pc) {
+  (pc.pendingCandidates || []).forEach(function (c) { pc.addIceCandidate(c).catch(function () {}); });
+  pc.pendingCandidates = [];
 }
 
 // ---- File and clipboard transfer over a WebRTC data channel ----

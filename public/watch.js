@@ -117,6 +117,9 @@ function showVideo() {
 }
 
 function closePeer() {
+  // A recording in progress is finished and kept, not thrown away.
+  if (typeof Recorder !== 'undefined') Recorder.stop();
+  if (typeof Mic !== 'undefined') Mic.stop();
   if (pc) pc.close();
   pc = null;
   if (typeof Control !== 'undefined') Control.detach();
@@ -127,7 +130,52 @@ function closePeer() {
   stopWebAudio();
   $('video').srcObject = null;
   $('unmuteBtn').hidden = true;
+  updateExtras();
 }
+
+// Buttons whose visibility depends on whether the picture is coming in.
+function updateExtras() {
+  if (typeof Recorder !== 'undefined') Recorder.update();
+  if (typeof Mic !== 'undefined') Mic.update();
+  updateRemoteStart();
+}
+
+// ---- Starting / stopping the share from here ----
+// Only offered when the computer says so: it allows this for remembered
+// devices if its user turned the option on.
+
+var canRemoteStart = false;
+var startTimer = null;
+
+function updateRemoteStart() {
+  var startBtn = $('remoteStartBtn');
+  var show = canRemoteStart && joined && !pc;
+  if (startBtn.hidden && show && APP) setTimeout(function () { startBtn.focus(); }, 0);
+  startBtn.hidden = !show;
+  if (!show) {
+    clearTimeout(startTimer);
+    startBtn.disabled = false;
+    startBtn.textContent = t('startShare');
+  }
+  $('remoteStopBtn').hidden = !canRemoteStart || !pc;
+}
+
+$('remoteStartBtn').onclick = function () {
+  var b = this;
+  signal.send({ type: 'signal', data: { kind: 'start-share' } });
+  b.disabled = true;
+  b.textContent = t('remoteStarting');
+  // No picture after a while (the computer couldn't start): allow another try.
+  clearTimeout(startTimer);
+  startTimer = setTimeout(function () {
+    b.disabled = false;
+    b.textContent = t('startShare');
+  }, 15000);
+};
+
+$('remoteStopBtn').onclick = function () {
+  signal.send({ type: 'signal', data: { kind: 'stop-share' } });
+};
 
 var accessKey = null; // from internet links; required by the computer over the tunnel
 
@@ -186,6 +234,7 @@ function showFinal(text) {
 function handleOffer(sdp) {
   closePeer(); // also clears video.srcObject, so the new tracks start fresh
   pc = new RTCPeerConnection({ iceServers: config.iceServers });
+  updateRemoteStart();
 
   pc.ontrack = function (e) {
     // A slightly deeper buffer (~0.2 s) rides out Wi-Fi hiccups instead of
@@ -218,6 +267,7 @@ function handleOffer(sdp) {
       });
     });
     showVideo();
+    updateExtras();
   };
 
   pc.onicecandidate = function (e) {
@@ -231,6 +281,7 @@ function handleOffer(sdp) {
   };
 
   pc.onconnectionstatechange = function () {
+    updateExtras();
     if (pc && pc.connectionState === 'failed') {
       showWaiting(t('peerFailed'));
       // If the server connection dropped meanwhile, we're no longer in the
@@ -394,6 +445,11 @@ function handleHostSignal(data) {
   } else if (data.kind === 'stopped') {
     closePeer();
     showWaiting(t('waitingHost'));
+  } else if (data.kind === 'caps') {
+    canRemoteStart = !!data.remoteStart;
+    updateRemoteStart();
+  } else if (/^mic-/.test(data.kind)) {
+    Mic.handle(data);
   }
 }
 
@@ -538,6 +594,7 @@ loadConfig().then(function (cfg) {
         joined = true;
         everJoined = true;
         if (!pc) showWaiting(t('waitingHost'));
+        updateRemoteStart();
       } else if (msg.type === 'pending') {
         showWaiting(t('waitingApproval'));
       } else if (msg.type === 'rejected') {
@@ -557,6 +614,7 @@ loadConfig().then(function (cfg) {
         }
       } else if (msg.type === 'host-left') {
         joined = false;
+        canRemoteStart = false; // the computer says again once it is back
         closePeer();
         showWaiting(t('hostGone'));
         retryJoin();
@@ -566,6 +624,7 @@ loadConfig().then(function (cfg) {
     },
     close: function () {
       joined = false;
+      updateRemoteStart();
       // The picture comes straight from the computer, not through the server:
       // if it's still flowing, keep showing it and just mention the hiccup.
       if (peerAlive()) notice(t('serverLostKeepWatching'));

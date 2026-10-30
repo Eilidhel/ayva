@@ -79,6 +79,21 @@ Windows, yönetici olarak çalışan pencerelerin (ör. Görev Yöneticisi) kont
 - **Telefon → bilgisayar:** kontrol açıkken telefonda **Gönder** butonu çıkar. Birlikte seçilen dosyalar `Masaüstü\Ayva` içinde gönderim tarih ve saatini taşıyan tek bir klasöre kaydedilir (ör. `Masaüstü\Ayva\2026-10-30 15.42.07`), yazılar bilgisayarın panosuna gider.
   Kontrol kapalıyken bilgisayar dosya ve yazı kabul etmez. Böylece bilgisayarına sadece fare ve klavye konusunda güvendiğin cihazlar dosya bırakabilir.
 
+## Telefondan ya da TV'den başlatma
+
+Programda **Hatırlanan cihazlar paylaşımı başlatıp durdurabilir**'i işaretle. Hatırlanan bir cihaz beklerken **Paylaşımı başlat**, izlerken **Paylaşımı durdur** butonunu görür. Bilgisayarın ana ekranı paylaşılır (seçicide işareti kaldırmadıysan sesiyle birlikte) ve bilgisayar her seferinde bildirim gösterir.
+Bunu yalnızca izin verirken hatırladığın cihazlar yapabilir; bir kerelik izin verdiklerin yapamaz. Seçenek varsayılan olarak kapalıdır. **Unut** bir cihazın bu hakkını hemen kaldırır.
+
+## Telefonda kayıt
+
+Telefondaki ya da tarayıcıdaki **Kayıt** izlenen görüntüyü o cihazda kaydeder. Durdurunca video (destekleniyorsa MP4, değilse WebM) **Kaydet** butonuyla görünür. Ağdan fazladan bir şey gitmez. Bilgisayar o cihazı **kaydediyor** olarak gösterir ve bildirim verir, yani kayıt gizlice yapılamaz.
+Kayıt kaydedilene kadar telefonun belleğinde durur (dakikada yaklaşık 30 MB). Çok uzun kayıtlarda eski telefonların belleği yetmeyebilir.
+
+## Bilgisayardan konuşma
+
+İzlerken **Konuş** telefonun mikrofonunu bilgisayarın hoparlörüne verir. Bilgisayar bunu hatırlanan cihazlardan ya da kontrol açıkken herhangi bir cihazdan kabul eder ve yanında **mikrofon açık** yazar. **Bağlantıyı kes** ya da **Unut** hemen durdurur.
+Tarayıcılar mikrofona yalnızca https sayfalarında izin verdiği için bu özellik sabit adreste ya da internet linkinde çalışır, `http://192.168.x.x` adresinde çalışmaz. Bilgisayarın sesi de paylaşılıyorsa telefon kendi sesini kısa bir gecikmeyle geri duyar; telefonun sesini kıs ya da kulaklık kullan.
+
 ## Arka planda çalışma
 
 Pencereyi kapatınca Ayva saat yanındaki simgede çalışmaya devam eder, TV'ler bilgisayarı bulmayı sürdürür. Çıkmak için simgeye sağ tıklayıp **Çıkış**'ı seç.

@@ -16,7 +16,7 @@ const { Cloud } = require('./cloud');
 const { Receiver } = require('./files');
 const { Updater } = require('./updater');
 
-const FIRST_PORT = 3000;
+const FIRST_PORT = Number(process.env.PORT) || 3000;
 const LAST_PORT = 3010;
 // Emergency switch: turns remote control off from the keyboard, even while
 // someone else is moving the mouse.
@@ -294,6 +294,20 @@ ipcMain.handle('select-source', (_event, choice) => {
   // screen the picture is; for a shared window only relative moves work.
   selected = { sourceId, audio: !!choice.audio, displayId: screenDisplayIds[sourceId] || null };
   return { absolute: !!selected.displayId };
+});
+
+// A remembered device asked to start sharing (the share page checks that the
+// user allows this): share the main screen without the picker. Screen capture
+// needs a user gesture, so the page's capture runs as if from a click.
+ipcMain.handle('remote-start', async (event, audio) => {
+  if (!fromOurWindow(event)) return { error: 'denied' };
+  const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } });
+  const primary = String(screen.getPrimaryDisplay().id);
+  const source = sources.find((s) => String(s.display_id) === primary) || sources[0];
+  if (!source) return { error: 'no screen' };
+  selected = { sourceId: source.id, audio: !!audio, displayId: source.display_id ? String(source.display_id) : null };
+  const started = await win.webContents.executeJavaScript('remoteCapture(' + !!selected.displayId + ')', true);
+  return started ? { ok: true } : { error: 'capture failed' };
 });
 
 // ---- Running in the background ----

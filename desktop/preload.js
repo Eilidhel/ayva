@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('ayva', {
   getSources: () => ipcRenderer.invoke('get-sources'),
   selectSource: (sourceId, audio) => ipcRenderer.invoke('select-source', { sourceId, audio }),
+  remoteStart: (audio) => ipcRenderer.invoke('remote-start', audio),
   hideFromCapture: (on) => ipcRenderer.send('hide-from-capture', on),
   notify: (title, body, filePath) => ipcRenderer.send('notify', title, body, filePath),
 

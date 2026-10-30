@@ -81,6 +81,21 @@ Windows does not let other programs control windows running as administrator (su
 - **Phone → computer:** with control allowed, the phone shows a **Send** button for files and text. Files picked together go into one folder named after the date and time, under `Desktop\Ayva` (for example `Desktop\Ayva\2026-10-30 15.42.07`), and text goes to the computer's clipboard.
   The computer refuses files and text while control is off, so only devices you trust with the mouse and keyboard can drop files on it.
 
+## Starting from the phone or TV
+
+Tick **Remembered devices can start and stop sharing** in the app. A remembered device then shows **Start sharing** while it waits, and **Stop sharing** while it watches. It shares the computer's main screen (with sound, unless you untick that in the picker), and the computer shows a notification every time.
+Only devices you remembered when allowing them can do this, never one you let in just once. The option is off by default; **Forget** takes the right away from a device at once.
+
+## Recording on the phone
+
+**Record** on the phone or browser records what it is watching, on that device. When you stop, the video (MP4 where supported, otherwise WebM) appears with a **Save** button. Nothing extra goes over the network. The computer shows that device as **recording** and sends a notification, so recordings are never secret.
+The recording is kept in the phone's memory until it is saved, at about 30 MB per minute, so very long recordings can run out of memory on older phones.
+
+## Talking through the computer
+
+**Talk** sends the phone's microphone to the computer's speakers while you watch. The computer accepts it from remembered devices, or from any device while control is allowed, and shows **microphone on** next to it. **Disconnect** or **Forget** stops it at once.
+Browsers only allow the microphone on https pages, so this works at the fixed address or the internet link, not at `http://192.168.x.x`. If the computer's sound is being shared, the phone hears its own voice back after a short delay; turn the phone's volume down or use headphones.
+
 ## Running in the background
 
 Closing the window keeps Ayva running in the system tray, so TVs can still find the computer. Right-click the tray icon to **Quit**.

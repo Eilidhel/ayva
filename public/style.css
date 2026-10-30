@@ -173,6 +173,7 @@ select {
   margin-left: 6px;
 }
 .device .tag.net { color: var(--leaf); }
+.device .tag.alert { color: var(--live); }
 .approval-box { width: min(440px, 100%); }
 
 .device-name { min-width: 0; overflow-wrap: anywhere; }

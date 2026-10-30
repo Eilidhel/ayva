@@ -262,6 +262,7 @@ if (window.ayva && window.ayva.controlSupported) {
   window.ayva.onControlForcedOff(function () {
     controlOn = false;
     broadcastControlState();
+    dropUnallowedMics();
     updateUi();
   });
 }
@@ -282,6 +283,7 @@ function setControl(on) {
   window.ayva.setControl(on).then(function (enabled) {
     controlOn = !!enabled;
     broadcastControlState();
+    dropUnallowedMics();
     updateUi();
   });
 }
@@ -481,6 +483,26 @@ function handleViewerSignal(id, data) {
     connectViewer(id);
     return;
   }
+  if (data.kind === 'start-share' || data.kind === 'stop-share') {
+    remoteShare(id, data.kind === 'start-share');
+    return;
+  }
+  if (data.kind === 'recording') {
+    noteRecording(id, !!data.on);
+    return;
+  }
+  if (data.kind === 'mic-offer') {
+    micOffer(id, data.sdp);
+    return;
+  }
+  if (data.kind === 'mic-candidate') {
+    if (mics[id]) addCandidate(mics[id].pc, data.candidate);
+    return;
+  }
+  if (data.kind === 'mic-stop') {
+    closeMic(id);
+    return;
+  }
   var pc = viewers[id];
   if (!pc) return;
   if (data.kind === 'answer') {
@@ -609,6 +631,8 @@ function forget(deviceId) {
   delete approvedThisRun[deviceId];
   saveTrusted();
   renderDevices();
+  broadcastCaps();
+  dropUnallowedMics();
 }
 
 // One line in a device list. deviceId (optional) adds a rename button that
@@ -683,6 +707,8 @@ function renderDevices() {
     var info = viewerInfo[id];
     var tags = [{ text: t(info.remote ? 'viaInternet' : 'viaLan'), cls: info.remote ? 'net' : '' }];
     if (isTrusted(info.deviceId)) tags.push({ text: t('remembered') });
+    if (info.recording) tags.push({ text: t('recordingTag'), cls: 'alert' });
+    if (mics[id]) tags.push({ text: t('talkingTag'), cls: 'alert' });
     list.appendChild(deviceRow(deviceLabel(info), tags, t('kick'), function () { kick(id); }, info.deviceId));
   });
 
@@ -691,6 +717,140 @@ function renderDevices() {
   tl.innerHTML = '';
   trusted.forEach(function (d) {
     tl.appendChild(deviceRow(deviceNames[d.id] || d.name, [], t('forget'), function () { forget(d.id); }, d.id));
+  });
+}
+
+// ---- Starting and stopping from a remembered device (desktop app) ----
+// Off by default. When the user turns it on, remembered devices (not ones
+// merely let in this time) can start sharing the main screen and stop it.
+// Each time, this computer shows a notification saying who did it.
+
+var remoteStartOn = storageGet('ayva-remote-start') === '1';
+$('remoteStart').checked = remoteStartOn;
+
+function canRemoteStart(id) {
+  var info = viewerInfo[id];
+  return remoteStartOn && !!(window.ayva && window.ayva.remoteStart) && !!info && isTrusted(info.deviceId);
+}
+
+// Tells a viewer whether to offer the start/stop buttons.
+function sendCaps(id) {
+  viaSignal(id).send({ type: 'signal', to: id, data: { kind: 'caps', remoteStart: canRemoteStart(id) } });
+}
+
+function broadcastCaps() {
+  Object.keys(viewerInfo).forEach(sendCaps);
+}
+
+function remoteShare(id, start) {
+  if (!canRemoteStart(id)) {
+    sendCaps(id);
+    return;
+  }
+  var who = deviceLabel(viewerInfo[id]);
+  if (!start) {
+    if (!stream) return;
+    stopSharing();
+    transferStatus(t('remoteStopped').replace('{who}', who));
+    window.ayva.notify(t('remoteStopped').replace('{who}', who), '');
+    return;
+  }
+  // Already live, or the user is picking a screen right now.
+  if (stream || !$('picker').hidden) return;
+  window.ayva.remoteStart($('pickerAudio').checked).then(function (result) {
+    var text = result && result.ok ? t('remoteStarted').replace('{who}', who)
+      : t('remoteStartFailed').replace('{who}', who) + (result && result.error ? result.error : '');
+    transferStatus(text);
+    window.ayva.notify(text, '');
+  });
+}
+
+// Called by the desktop app (with a user gesture) after it picked the main screen.
+function remoteCapture(absolute) {
+  absolutePointer = !!absolute;
+  return Promise.resolve(capture()).then(function () { return !!stream; });
+}
+
+$('remoteStart').onchange = function () {
+  remoteStartOn = this.checked;
+  storageSet('ayva-remote-start', remoteStartOn ? '1' : '0');
+  broadcastCaps();
+};
+
+// ---- Recording on a viewer ----
+// A phone can record the stream on its own; it tells us, so the user here can
+// see who is recording.
+
+function noteRecording(id, on) {
+  var info = viewerInfo[id];
+  if (!info || !!info.recording === on) return;
+  info.recording = on;
+  renderDevices();
+  if (on && window.ayva) window.ayva.notify(t('recordingTitle'), deviceLabel(info));
+}
+
+// ---- Microphone from a viewer ----
+// A phone can talk through this computer's speakers over a connection of its
+// own. Accepted from remembered devices, or from any device while remote
+// control is on, and only while sharing.
+
+var mics = {}; // viewer id -> { pc, audio }
+
+function micAllowed(id) {
+  var info = viewerInfo[id];
+  return !!stream && !!info && (controlOn || isTrusted(info.deviceId));
+}
+
+function micOffer(id, sdp) {
+  closeMic(id);
+  if (!micAllowed(id) || !sdp) {
+    viaSignal(id).send({ type: 'signal', to: id, data: { kind: 'mic-refused' } });
+    return;
+  }
+  var pc = new RTCPeerConnection({ iceServers: config.iceServers });
+  var audio = new Audio();
+  audio.autoplay = true;
+  mics[id] = { pc: pc, audio: audio };
+  pc.ontrack = function (e) {
+    audio.srcObject = e.streams[0] || new MediaStream([e.track]);
+    audio.play().catch(function () {});
+  };
+  pc.onicecandidate = function (e) {
+    if (e.candidate) viaSignal(id).send({ type: 'signal', to: id, data: { kind: 'mic-candidate', candidate: e.candidate } });
+  };
+  pc.onconnectionstatechange = function () {
+    if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+      if (mics[id] && mics[id].pc === pc) closeMic(id);
+    }
+  };
+  pc.setRemoteDescription(sdp)
+    .then(function () {
+      flushCandidates(pc);
+      return pc.createAnswer();
+    })
+    .then(function (answer) { return pc.setLocalDescription(answer); })
+    .then(function () {
+      viaSignal(id).send({ type: 'signal', to: id, data: { kind: 'mic-answer', sdp: pc.localDescription } });
+    })
+    .catch(function () { closeMic(id); });
+  renderDevices();
+}
+
+function closeMic(id) {
+  var m = mics[id];
+  if (!m) return;
+  delete mics[id];
+  m.pc.close();
+  m.audio.srcObject = null;
+  renderDevices();
+}
+
+// Control was switched off: only remembered devices may keep talking.
+function dropUnallowedMics() {
+  Object.keys(mics).forEach(function (id) {
+    if (micAllowed(id)) return;
+    closeMic(id);
+    viaSignal(id).send({ type: 'signal', to: id, data: { kind: 'mic-refused' } });
   });
 }
 
@@ -994,6 +1154,7 @@ function stopSharing() {
   if (window.ayva && window.ayva.hideFromCapture) window.ayva.hideFromCapture(false);
   stream.getTracks().forEach(function (track) { track.stop(); });
   stream = null;
+  Object.keys(mics).forEach(closeMic);
   $('preview').srcObject = null;
   viewerStats = {};
   renderStats();
@@ -1043,6 +1204,7 @@ function signalingLost(id) {
 function viewerLeft(id) {
   delete orphaned[id];
   dropRequest(id);
+  closeMic(id);
   delete viewerInfo[id];
   renderDevices();
   closePeer(id);
@@ -1076,6 +1238,7 @@ function handleHubMessage(msg, sig) {
     viewerInfo[msg.id] = { name: msg.name, deviceId: msg.deviceId, remote: msg.remote };
     viewers[msg.id] = null;
     connectViewer(msg.id);
+    sendCaps(msg.id);
     updateUi();
     renderDevices();
   } else if (msg.type === 'viewer-left') {
@@ -1153,6 +1316,7 @@ $('revealBtn').onclick = function () {
   updateUi();
 };
 if (window.ayva) $('audioTip').textContent = t('tvAppTip');
+if (window.ayva && window.ayva.remoteStart) $('remoteStartRow').hidden = false;
 if (window.ayva && window.ayva.getStartWithWindows) {
   $('startWithWindowsRow').hidden = false;
   window.ayva.getStartWithWindows().then(function (on) { $('startWithWindows').checked = !!on; });

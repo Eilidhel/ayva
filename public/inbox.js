@@ -141,5 +141,5 @@ var Inbox = (function () {
     note(t('clipSentToComputer'));
   };
 
-  return { attach: attach, detach: detach };
+  return { attach: attach, detach: detach, addFile: addFile };
 })();
