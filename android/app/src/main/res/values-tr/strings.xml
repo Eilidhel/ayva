@@ -6,5 +6,13 @@
     <string name="live">CANLI</string>
     <string name="ready">Hazır</string>
     <string name="help">Bilgisayarında Ayva programını aç. Bilgisayar ve bu TV aynı ağda olmalı.</string>
+    <string name="help_phone">Evde bu Wi-Fi\'daki bilgisayarlar burada görünür. Dışarıdayken sabit adresi kullan.</string>
     <string name="not_found">Henüz bilgisayar bulunamadı. Bilgisayarda Ayva programı açık mı, güvenlik duvarı izin veriyor mu?</string>
+    <string name="not_found_phone">Bu ağda bilgisayar bulunamadı. Dışarıdaysan bilgisayardaki Ayva\'da yazan sabit adresi ekle.</string>
+    <string name="add_address">+ Sabit adres ekle</string>
+    <string name="add_address_help">Bilgisayardaki Ayva\'dan sabit adresi (https://ayva.….workers.dev) kopyala ve buraya yapıştır.</string>
+    <string name="connect">Bağlan</string>
+    <string name="remove">Kaldır</string>
+    <string name="remove_address">%1$s bu listeden kaldırılsın mı?</string>
+    <string name="saved">İndirilenler/Ayva klasörüne kaydedildi: %1$s</string>
 </resources>

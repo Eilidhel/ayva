@@ -1,9 +1,15 @@
 package io.github.ayva.tv;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.UiModeManager;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -13,20 +19,26 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
+import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
  * Start screen: lists the computers found on the network. Connects by itself
- * to the computer used last time, or to the only one found.
+ * to the computer used last time, or to the only one found. On phones it also
+ * keeps fixed addresses (https://ayva.<name>.workers.dev) for use away from home.
  */
 public class MainActivity extends Activity implements Discovery.Listener {
 
@@ -47,12 +59,21 @@ public class MainActivity extends Activity implements Discovery.Listener {
     private long startedAt;
     private boolean autoConnect = true;
     private String focusedKey;
+    private List<Discovery.Host> lastHosts = Collections.emptyList();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(buildLayout());
         discovery = new Discovery(this, this);
+        render();
+        handleLink(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleLink(intent);
     }
 
     @Override
@@ -72,21 +93,28 @@ public class MainActivity extends Activity implements Discovery.Listener {
 
     @Override
     public void onHostsChanged(List<Discovery.Host> hosts) {
+        lastHosts = hosts;
         title.setText(hosts.isEmpty() ? R.string.searching : R.string.found);
-        if (!hosts.isEmpty()) help.setText(R.string.help);
+        if (!hosts.isEmpty()) help.setText(isTv() ? R.string.help : R.string.help_phone);
 
         if (autoConnect && maybeAutoConnect(hosts)) return;
+        render();
+    }
 
+    private void render() {
         View focused = getCurrentFocus();
         if (focused != null && focused.getTag() instanceof String) focusedKey = (String) focused.getTag();
 
         list.removeAllViews();
         Button toFocus = null;
-        for (Discovery.Host host : hosts) {
-            Button b = hostButton(host);
+        for (final Discovery.Host host : lastHosts) {
+            String status = host.live ? "  ●  " + getString(R.string.live) : "  ·  " + getString(R.string.ready);
+            Button b = hostButton(host.name + status, host.live, v -> open(host));
+            b.setTag(host.key());
             list.addView(b);
             if (toFocus == null || host.key().equals(focusedKey)) toFocus = b;
         }
+        if (!isTv()) addAddressButtons();
         if (toFocus != null) toFocus.requestFocus();
     }
 
@@ -111,12 +139,34 @@ public class MainActivity extends Activity implements Discovery.Listener {
     private void open(Discovery.Host host) {
         autoConnect = false;
         prefs().edit().putString("last", host.name).apply();
+        // The device name is what the computer shows when asking to let this device in.
+        startPlayer("http://" + host.address + ":" + host.port + "/watch.html?" + pageQuery() + "#" + host.code);
+    }
+
+    // A fixed address or internet link: the page there finds the computer.
+    private void openUrl(String url) {
+        autoConnect = false;
+        Uri u = Uri.parse(url);
+        String query = u.getEncodedQuery();
+        startPlayer(u.buildUpon()
+                .encodedQuery((query == null || query.isEmpty() ? "" : query + "&") + pageQuery())
+                .build().toString());
+    }
+
+    private void startPlayer(String url) {
         Intent intent = new Intent(this, PlayerActivity.class);
-        // The device name is what the computer shows when asking to let this TV in.
-        intent.putExtra(PlayerActivity.EXTRA_URL,
-                "http://" + host.address + ":" + host.port + "/watch.html?app=1&name="
-                        + Uri.encode(deviceName()) + "#" + host.code);
+        intent.putExtra(PlayerActivity.EXTRA_URL, url);
         startActivity(intent);
+    }
+
+    // app=1 is the TV layout (made for the remote); phones get the touch page.
+    private String pageQuery() {
+        return (isTv() ? "app=1&" : "") + "name=" + Uri.encode(deviceName());
+    }
+
+    private boolean isTv() {
+        UiModeManager ui = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
+        return ui != null && ui.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
     }
 
     private static String deviceName() {
@@ -130,11 +180,91 @@ public class MainActivity extends Activity implements Discovery.Listener {
     }
 
     private void showNotFoundHint() {
-        if (list.getChildCount() == 0) help.setText(R.string.not_found);
+        if (lastHosts.isEmpty()) help.setText(isTv() ? R.string.not_found : R.string.not_found_phone);
     }
 
     private SharedPreferences prefs() {
         return getSharedPreferences("ayva", MODE_PRIVATE);
+    }
+
+    // ---- Fixed addresses (phones) ----
+
+    // An address opened with this app (from the camera, a message…): keep it and go there.
+    private void handleLink(Intent intent) {
+        Uri data = intent == null ? null : intent.getData();
+        if (data == null || !"https".equals(data.getScheme()) || data.getHost() == null) return;
+        if (data.getHost().endsWith(".workers.dev")) saveAddress(data);
+        openUrl(data.toString());
+    }
+
+    private List<String> addresses() {
+        List<String> out = new ArrayList<>();
+        for (String a : prefs().getString("addresses", "").split("\n")) {
+            if (!a.isEmpty()) out.add(a);
+        }
+        return out;
+    }
+
+    private void saveAddresses(List<String> addresses) {
+        prefs().edit().putString("addresses", TextUtils.join("\n", addresses)).apply();
+        render();
+    }
+
+    // Only the fixed address itself; the page asks for the password once.
+    private void saveAddress(Uri u) {
+        String clean = "https://" + u.getHost() + "/";
+        List<String> addresses = addresses();
+        if (!addresses.contains(clean)) addresses.add(clean);
+        saveAddresses(addresses);
+    }
+
+    private void addAddressButtons() {
+        for (final String address : addresses()) {
+            final String host = Uri.parse(address).getHost();
+            Button b = hostButton("🌐  " + host, false, v -> openUrl(address));
+            b.setOnLongClickListener(v -> {
+                new AlertDialog.Builder(this)
+                        .setMessage(getString(R.string.remove_address, host))
+                        .setPositiveButton(R.string.remove, (d, w) -> {
+                            List<String> addresses = addresses();
+                            addresses.remove(address);
+                            saveAddresses(addresses);
+                        })
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show();
+                return true;
+            });
+            list.addView(b);
+        }
+        list.addView(hostButton(getString(R.string.add_address), false, v -> askAddress()));
+    }
+
+    private void askAddress() {
+        final EditText input = new EditText(this);
+        input.setHint("https://ayva.….workers.dev");
+        input.setSingleLine(true);
+        input.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
+        // The address was probably just copied from the computer.
+        ClipboardManager cb = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = cb == null ? null : cb.getPrimaryClip();
+        if (clip != null && clip.getItemCount() > 0 && clip.getItemAt(0).getText() != null) {
+            String text = clip.getItemAt(0).getText().toString().trim();
+            if (text.startsWith("https://")) input.setText(text);
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.add_address)
+                .setMessage(R.string.add_address_help)
+                .setView(input)
+                .setPositiveButton(R.string.connect, (d, w) -> {
+                    String url = input.getText().toString().trim();
+                    if (!url.startsWith("http")) url = "https://" + url;
+                    Uri u = Uri.parse(url);
+                    if (!"https".equals(u.getScheme()) || u.getHost() == null) return;
+                    if (u.getHost().endsWith(".workers.dev")) saveAddress(u);
+                    openUrl(url);
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     // ---- Views (built in code to keep the app dependency-free) ----
@@ -144,7 +274,8 @@ public class MainActivity extends Activity implements Discovery.Listener {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setBackgroundColor(BG);
-        root.setPadding(dp(48), dp(40), dp(48), dp(24));
+        int side = isTv() ? dp(48) : dp(20);
+        root.setPadding(side, dp(40), side, dp(24));
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -161,7 +292,7 @@ public class MainActivity extends Activity implements Discovery.Listener {
         title.setPadding(0, dp(24), 0, dp(4));
         root.addView(title);
 
-        help = text(getString(R.string.help), 15, MUTED);
+        help = text(getString(isTv() ? R.string.help : R.string.help_phone), 15, MUTED);
         help.setGravity(Gravity.CENTER);
         help.setPadding(0, 0, 0, dp(16));
         root.addView(help);
@@ -170,13 +301,13 @@ public class MainActivity extends Activity implements Discovery.Listener {
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list);
-        root.addView(scroll, new LinearLayout.LayoutParams(dp(520), LinearLayout.LayoutParams.WRAP_CONTENT));
+        int width = Math.min(dp(520), getResources().getDisplayMetrics().widthPixels - 2 * side);
+        root.addView(scroll, new LinearLayout.LayoutParams(width, LinearLayout.LayoutParams.WRAP_CONTENT));
         return root;
     }
 
-    private Button hostButton(final Discovery.Host host) {
+    private Button hostButton(String label, boolean live, View.OnClickListener onClick) {
         Button b = new Button(this);
-        b.setTag(host.key());
         b.setAllCaps(false);
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
         // Dark text on the gold focus highlight, light text otherwise.
@@ -185,16 +316,15 @@ public class MainActivity extends Activity implements Discovery.Listener {
                 new int[]{ON_ACCENT, ON_ACCENT, Color.WHITE}));
         b.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         b.setPadding(dp(20), dp(16), dp(20), dp(16));
-        String status = host.live ? "  ●  " + getString(R.string.live) : "  ·  " + getString(R.string.ready);
-        b.setText(host.name + status);
+        b.setText(label);
 
         StateListDrawable bg = new StateListDrawable();
         bg.addState(new int[]{android.R.attr.state_focused}, rounded(ACCENT));
         bg.addState(new int[]{android.R.attr.state_pressed}, rounded(ACCENT));
-        bg.addState(new int[]{}, rounded(host.live ? LIVE_BG : PANEL));
+        bg.addState(new int[]{}, rounded(live ? LIVE_BG : PANEL));
         b.setBackground(bg);
         b.setFocusable(true);
-        b.setOnClickListener(v -> open(host));
+        b.setOnClickListener(onClick);
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);

@@ -158,6 +158,62 @@ function updateRemoteStart() {
     startBtn.textContent = t('startShare');
   }
   $('remoteStopBtn').hidden = !canRemoteStart || !pc;
+  var locked = pinSalt !== null && joined;
+  $('unlockBtn').hidden = !locked || !!pc;
+  $('pinBtn').hidden = !locked || !pc;
+  if (!locked) $('pinOverlay').classList.add('hidden');
+}
+
+// ---- Proving who we are, and the PIN ----
+// Right after it lets us in, the computer sends a one-time challenge. Signing
+// it with this device's key (devicekey.js) shows a remembered device is the
+// real one. Rights such as starting the share may also need a PIN.
+
+var proofNonce = null;
+var pinSalt = null; // set while the computer wants a PIN
+
+function proveDevice(nonce) {
+  proofNonce = String(nonce || '');
+  DeviceKey.prove(proofNonce).then(function (proof) {
+    signal.send({ type: 'signal', data: proof ? { kind: 'proof', key: proof.key, sig: proof.sig } : { kind: 'proof' } });
+  });
+}
+
+function openPin() {
+  $('pinError').textContent = '';
+  $('pinInput').value = '';
+  $('pinOverlay').classList.remove('hidden');
+  $('pinInput').focus();
+}
+
+$('unlockBtn').onclick = openPin;
+$('pinBtn').onclick = openPin;
+$('pinCancel').onclick = function () { $('pinOverlay').classList.add('hidden'); };
+
+// Only a hash bound to this connection's challenge goes over the network.
+$('pinForm').onsubmit = function (e) {
+  e.preventDefault();
+  var pin = $('pinInput').value.trim();
+  if (!pin || pinSalt === null) return;
+  DeviceKey.sha256(pinSalt + ':' + pin).then(function (stored) {
+    return stored && DeviceKey.sha256(proofNonce + ':' + stored);
+  }).then(function (hash) {
+    if (!hash) {
+      $('pinError').textContent = t('pinUnavailable');
+      return;
+    }
+    signal.send({ type: 'signal', data: { kind: 'pin', hash: hash } });
+  });
+};
+
+function pinResult(data) {
+  if (data.ok) {
+    $('pinOverlay').classList.add('hidden');
+    notice(t('pinAccepted'));
+    return;
+  }
+  $('pinInput').value = '';
+  $('pinError').textContent = data.locked ? t('pinLocked') : t('pinWrong');
 }
 
 $('remoteStartBtn').onclick = function () {
@@ -445,9 +501,14 @@ function handleHostSignal(data) {
   } else if (data.kind === 'stopped') {
     closePeer();
     showWaiting(t('waitingHost'));
+  } else if (data.kind === 'prove') {
+    proveDevice(data.nonce);
   } else if (data.kind === 'caps') {
     canRemoteStart = !!data.remoteStart;
+    pinSalt = data.pinNeeded ? String(data.pinSalt || '') : null;
     updateRemoteStart();
+  } else if (data.kind === 'pin-result') {
+    pinResult(data);
   } else if (/^mic-/.test(data.kind)) {
     Mic.handle(data);
   }
@@ -615,6 +676,7 @@ loadConfig().then(function (cfg) {
       } else if (msg.type === 'host-left') {
         joined = false;
         canRemoteStart = false; // the computer says again once it is back
+        pinSalt = null;
         closePeer();
         showWaiting(t('hostGone'));
         retryJoin();

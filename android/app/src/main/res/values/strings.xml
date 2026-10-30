@@ -6,5 +6,13 @@
     <string name="live">LIVE</string>
     <string name="ready">Ready</string>
     <string name="help">Open the Ayva program on your computer. The computer and this TV must be on the same network.</string>
+    <string name="help_phone">At home, computers on this Wi-Fi show up here. Elsewhere, use the fixed address.</string>
     <string name="not_found">No computer found yet. Is the Ayva program open on your computer, and allowed through the firewall?</string>
+    <string name="not_found_phone">No computer found on this network. Away from home, add the fixed address shown in Ayva on your computer.</string>
+    <string name="add_address">+ Add fixed address</string>
+    <string name="add_address_help">Copy the fixed address from Ayva on your computer (https://ayva.….workers.dev) and paste it here.</string>
+    <string name="connect">Connect</string>
+    <string name="remove">Remove</string>
+    <string name="remove_address">Remove %1$s from this list?</string>
+    <string name="saved">Saved to Downloads/Ayva: %1$s</string>
 </resources>

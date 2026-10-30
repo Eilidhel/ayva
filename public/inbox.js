@@ -82,6 +82,10 @@ var Inbox = (function () {
   function addFile(name, blob) {
     var url = URL.createObjectURL(blob);
     item(name + ' · ' + formatSize(blob.size), t('save'), function () {
+      if (window.AyvaFiles) {
+        saveInApp(name, blob);
+        return;
+      }
       var a = document.createElement('a');
       a.href = url;
       a.download = name;
@@ -89,6 +93,35 @@ var Inbox = (function () {
       a.click();
       document.body.removeChild(a);
     });
+  }
+
+  // The Android app cannot download blob: links; it takes the bytes in pieces.
+  function saveInApp(name, blob) {
+    var id = window.AyvaFiles.begin(name, blob.type || '');
+    if (!id) {
+      note(t('fileFailed').replace('{name}', name));
+      return;
+    }
+    var PIECE = 512 * 1024;
+    var offset = 0;
+    function next() {
+      if (offset >= blob.size) {
+        window.AyvaFiles.end(id, name);
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function () {
+        var data = String(reader.result);
+        if (!window.AyvaFiles.chunk(id, data.slice(data.indexOf(',') + 1))) {
+          note(t('fileFailed').replace('{name}', name));
+          return;
+        }
+        offset += PIECE;
+        next();
+      };
+      reader.readAsDataURL(blob.slice(offset, offset + PIECE));
+    }
+    next();
   }
 
   function addText(text) {

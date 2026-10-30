@@ -19,15 +19,19 @@ Download both files from the [Releases](../../releases) page.
 
 **Computer (Windows 10/11):** run `Ayva-Setup-x.y.z.exe`. Windows SmartScreen may warn that the app is unsigned; choose **More info → Run anyway**. The installer allows Ayva through the Windows firewall for your local network only.
 
-**TV (Android TV / Google TV / Android set-top boxes):** install `Ayva-TV.apk`:
+**TV (Android TV / Google TV / Android set-top boxes):** install `Ayva-Android.apk`:
 
 1. Copy the APK to a USB stick and plug it into the TV or box.
 2. Open it with a file manager. If the TV has none, install **File Commander** or **X-plore** from Google Play.
 3. When asked, allow installing apps from this source.
 
-You can also use the **Send files to TV** app or `adb install Ayva-TV.apk`.
+You can also use the **Send files to TV** app or `adb install Ayva-Android.apk`.
 
-**Phone:** nothing to install. Scan the QR code, or open the link shown in Ayva.
+**Android phone (recommended):** open the Releases page on the phone, download `Ayva-Android.apk` (the same app as the TV), open it and allow installing from your browser. At home the app finds the computer by itself; for away from home, tap **+ Add fixed address** and paste the fixed address once. The app keeps the phone's [device key](#security) in the Android Keystore, and handles the microphone, sending files and saving recordings.
+
+**iPhone / iPad:** Apple does not allow installing apps from outside the App Store, so Ayva runs in Safari. Open the **fixed address** in Safari, then tap **Share → Add to Home Screen**. Ayva then gets its own icon and opens full screen like an app, with its own storage (clearing Safari's history does not remove its device key). The microphone works there too.
+
+**Any other phone or browser:** nothing to install. Scan the QR code, or open the link shown in Ayva. To be remembered, a browser needs an https address (the fixed address or the internet link); on `http://192.168.x.x` it can watch but is asked about every time.
 
 ## Using Ayva
 
@@ -89,6 +93,12 @@ Under **Remembered devices** in the app, each device has two boxes, both off by 
 - **Can control:** while sharing, the device can use the mouse and keyboard (and send files) without you pressing **Allow control**. Other devices still only watch. **Ctrl+Alt+K** stops it until sharing starts again.
 
 Only devices you remembered when allowing them get these boxes, never one you let in just once. **Forget** takes both rights away at once.
+
+## Security
+
+**Device keys.** When you remember a device, it creates a key that never leaves it: the Android app keeps it in the Android Keystore, browsers keep a non-extractable WebCrypto key. Each time the device connects, the computer sends it a one-time challenge to sign, and nothing (picture, rights) reaches it before the signature checks out. Someone who overhears or copies the device's id therefore cannot pose as it; the computer cuts them off and tells you. If one of your own devices loses its key (its browser data was cleared, say), **Forget** it and let it in again. Devices remembered before 0.8.0 are asked about once more to get a key.
+
+**PIN.** Under **Remembered devices**, **PIN** sets a 4–8 digit PIN for a device. The device then has to enter it on every connection before it may start sharing or control, so a stolen unlocked phone is not enough. The PIN is stored on the computer only as a salted hash, the device sends a hash tied to that connection, and five wrong tries lock the device's rights for 15 minutes (the computer tells you).
 
 ## Recording on the phone
 
@@ -153,7 +163,7 @@ Phone elsewhere ── https ── Cloudflare quick tunnel ── server.js (ac
 - `public/share.js` captures the screen and opens one `RTCPeerConnection` per viewer, with `control` and `transfer` data channels.
 - `public/watch.js`, `control.js` and `inbox.js` are the viewer: playback, remote control, and files/clipboard.
 - `desktop/` is the Electron app: source picker, input injection (`input.js`, Win32 `SendInput`), tunnel (`tunnel.js`), tray, files and clipboard.
-- `android/` is the Android TV app (plain Java, no dependencies): discovery and a full-screen WebView player.
+- `android/` is the Android app for TVs and phones (plain Java, no dependencies): discovery, fixed addresses, and a full-screen WebView player with the device key in the Android Keystore.
 
 ## Building
 

@@ -1,4 +1,4 @@
-# Builds the Windows installer and the Android TV APK.
+# Builds the Windows installer and the Android APK (TV and phone).
 # Push a tag like v0.2.0 to attach both to a GitHub release.
 name: Build
 
@@ -40,11 +40,11 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
-          mv app/build/outputs/apk/release/app-release.apk ../Ayva-TV.apk
+          mv app/build/outputs/apk/release/app-release.apk ../Ayva-Android.apk
       - uses: actions/upload-artifact@v6
         with:
           name: android-apk
-          path: Ayva-TV.apk
+          path: Ayva-Android.apk
 
   windows:
     runs-on: windows-latest

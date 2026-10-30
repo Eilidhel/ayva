@@ -270,13 +270,8 @@ if (window.ayva && window.ayva.controlSupported) {
   });
 }
 
-function canControlFrom(deviceId) {
-  return !!deviceId && trusted.some(function (d) { return d.id === deviceId && d.canControl; });
-}
-
 function controlAllowed(id) {
-  var info = viewerInfo[id];
-  return controlOn || (controlSupported && !!stream && !controlPaused && !!info && canControlFrom(info.deviceId));
+  return controlOn || (controlSupported && !!stream && !controlPaused && deviceRight(id, 'canControl'));
 }
 
 function controlState(id) {
@@ -510,6 +505,10 @@ function handleViewerSignal(id, data) {
     connectViewer(id);
     return;
   }
+  if (data.kind === 'pin') {
+    checkPin(id, data.hash);
+    return;
+  }
   if (data.kind === 'start-share' || data.kind === 'stop-share') {
     remoteShare(id, data.kind === 'start-share');
     return;
@@ -566,8 +565,17 @@ function saveTrusted() {
   storageSet('ayva-trusted', JSON.stringify(trusted));
 }
 
+function trustedEntry(deviceId) {
+  if (!deviceId) return null;
+  for (var i = 0; i < trusted.length; i++) if (trusted[i].id === deviceId) return trusted[i];
+  return null;
+}
+
+// Remembered and holding a device key. Devices remembered before keys existed
+// stay listed but are asked about again, and get a key then.
 function isTrusted(deviceId) {
-  return !!deviceId && trusted.some(function (d) { return d.id === deviceId; });
+  var d = trustedEntry(deviceId);
+  return !!d && !!d.key;
 }
 
 // Names the user gave devices here ("Ahmet's phone"), by device id. They win
@@ -622,12 +630,12 @@ function answerRequest(approved) {
   var req = requests.shift();
   if (req) {
     if (approved) {
-      if (req.deviceId) approvedThisRun[req.deviceId] = true;
       var given = $('approvalName').value.trim();
       if (req.deviceId && given && given !== deviceLabel(req)) setDeviceName(req.deviceId, given);
-      if (req.deviceId && $('approvalRemember').checked && !isTrusted(req.deviceId)) {
-        trusted.push({ id: req.deviceId, name: deviceLabel(req) });
-        saveTrusted();
+      // Bound to the device's key once it proves itself (see checkProof).
+      if (req.deviceId) {
+        approvedThisRun[req.deviceId] = approvedThisRun[req.deviceId] || true;
+        if ($('approvalRemember').checked && !isTrusted(req.deviceId)) rememberOnProof[req.deviceId] = deviceLabel(req);
       }
       viaSignal(req.id).send({ type: 'approve', id: req.id });
     } else {
@@ -636,6 +644,94 @@ function answerRequest(approved) {
   }
   showNextRequest();
   renderDevices();
+}
+
+// ---- Device keys ----
+// A device id alone can be overheard or copied, so every viewer that gets in
+// is first sent a one-time challenge and must sign it with its device key
+// (devicekey.js). Nothing (picture, rights) reaches it before that. A device
+// that was remembered or let in this run with a key must use the same key;
+// one that fails is cut off and the user is told.
+
+var proving = {}; // viewer id -> { msg, sig, nonce, timer }
+var rememberOnProof = {}; // deviceId -> name: remember it once it shows a key
+var PROOF_TIMEOUT_MS = 15000;
+
+function randomHex(bytes) {
+  return Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(bytes)), function (b) {
+    return ('0' + b.toString(16)).slice(-2);
+  }).join('');
+}
+
+function fromBase64(text) {
+  var s = atob(text);
+  var bytes = new Uint8Array(s.length);
+  for (var i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i);
+  return bytes;
+}
+
+function startProof(msg, sig) {
+  var nonce = randomHex(24);
+  proving[msg.id] = {
+    msg: msg,
+    sig: sig,
+    nonce: nonce,
+    timer: setTimeout(function () { failProof(msg.id); }, PROOF_TIMEOUT_MS),
+  };
+  sig.send({ type: 'signal', to: msg.id, data: { kind: 'prove', nonce: nonce } });
+}
+
+function verifySignature(key, sig, nonce) {
+  if (typeof key !== 'string' || typeof sig !== 'string' || !crypto.subtle) return Promise.resolve(false);
+  var algo = { name: 'ECDSA', namedCurve: 'P-256' };
+  return crypto.subtle.importKey('spki', fromBase64(key), algo, false, ['verify']).then(function (k) {
+    return crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, k, fromBase64(sig),
+      new TextEncoder().encode('ayva-device-proof:' + nonce));
+  }).catch(function () { return false; });
+}
+
+function checkProof(id, data) {
+  var p = proving[id];
+  if (!p) return;
+  var deviceId = p.msg.deviceId;
+  var entry = trustedEntry(deviceId);
+  // The key this device must show, if one is known for it.
+  var expected = (entry && entry.key) || (typeof approvedThisRun[deviceId] === 'string' ? approvedThisRun[deviceId] : null);
+  var hasKey = typeof data.key === 'string' && data.key.length < 400;
+  var check = hasKey ? verifySignature(data.key, data.sig, p.nonce) : Promise.resolve(false);
+  check.then(function (valid) {
+    if (proving[id] !== p) return;
+    if (expected ? !(valid && data.key === expected) : hasKey && !valid) {
+      failProof(id);
+      return;
+    }
+    clearTimeout(p.timer);
+    delete proving[id];
+    if (deviceId && valid) {
+      if (approvedThisRun[deviceId]) approvedThisRun[deviceId] = data.key;
+      if (deviceId in rememberOnProof) {
+        if (entry) entry.key = data.key;
+        else trusted.push({ id: deviceId, name: rememberOnProof[deviceId], key: data.key });
+        saveTrusted();
+      }
+    } else if (deviceId in rememberOnProof) {
+      transferStatus(t('cannotRemember').replace('{who}', deviceLabel(p.msg)));
+    }
+    delete rememberOnProof[deviceId];
+    viewerAdmitted(p.msg, p.sig, p.nonce);
+  });
+}
+
+// Wrong key, or no answer: the device is not who it says it is.
+function failProof(id) {
+  var p = proving[id];
+  if (!p) return;
+  clearTimeout(p.timer);
+  delete proving[id];
+  var text = t('proofFailed').replace('{who}', deviceLabel(p.msg));
+  transferStatus(text);
+  if (window.ayva && window.ayva.notify) window.ayva.notify(text, '');
+  p.sig.send({ type: 'kick', id: id });
 }
 
 // The requester gave up (closed the page) before an answer.
@@ -745,10 +841,19 @@ function renderDevices() {
   var tl = $('trusted');
   tl.innerHTML = '';
   trusted.forEach(function (d) {
-    var row = deviceRow(deviceNames[d.id] || d.name, [], t('forget'), function () { forget(d.id); }, d.id);
-    var actions = row.querySelector('.row');
-    if (controlSupported) actions.prepend(permissionBox(d, 'canControl'));
-    if (window.ayva && window.ayva.remoteStart) actions.prepend(permissionBox(d, 'canStart'));
+    var tags = d.key ? (d.pin ? [{ text: t('pinTag') }] : []) : [{ text: t('needsReapproval'), cls: 'alert' }];
+    var row = deviceRow(deviceNames[d.id] || d.name, tags, t('forget'), function () { forget(d.id); }, d.id);
+    if (d.key) {
+      var actions = row.querySelector('.row');
+      var pinBtn = document.createElement('button');
+      pinBtn.className = 'secondary small-btn';
+      pinBtn.textContent = 'PIN';
+      pinBtn.title = t('pinHint');
+      pinBtn.onclick = function () { startPinEdit(row, d); };
+      actions.prepend(pinBtn);
+      if (controlSupported) actions.prepend(permissionBox(d, 'canControl'));
+      if (window.ayva && window.ayva.remoteStart) actions.prepend(permissionBox(d, 'canStart'));
+    }
     tl.appendChild(row);
   });
 }
@@ -783,18 +888,144 @@ function setPermission(deviceId, key, on) {
 // for one merely let in this time); that device can then start sharing the
 // main screen and stop it. Each time, this computer shows a notification.
 
-function canStartFrom(deviceId) {
-  return !!deviceId && trusted.some(function (d) { return d.id === deviceId && d.canStart; });
+// A right ticked for a remembered (keyed) device, unlocked by its PIN if it has one.
+function deviceRight(id, right) {
+  var info = viewerInfo[id];
+  var d = info && isTrusted(info.deviceId) ? trustedEntry(info.deviceId) : null;
+  return !!d && !!d[right] && (!d.pin || info.pinOk);
 }
 
 function canRemoteStart(id) {
-  var info = viewerInfo[id];
-  return !!(window.ayva && window.ayva.remoteStart) && !!info && canStartFrom(info.deviceId);
+  return !!(window.ayva && window.ayva.remoteStart) && deviceRight(id, 'canStart');
 }
 
-// Tells a viewer whether to offer the start/stop buttons.
+// Tells a viewer whether to offer the start/stop buttons, or to ask for the PIN.
 function sendCaps(id) {
-  viaSignal(id).send({ type: 'signal', to: id, data: { kind: 'caps', remoteStart: canRemoteStart(id) } });
+  var info = viewerInfo[id];
+  var d = info && isTrusted(info.deviceId) ? trustedEntry(info.deviceId) : null;
+  var pinNeeded = !!d && !!d.pin && !info.pinOk && !!(d.canStart || d.canControl);
+  viaSignal(id).send({ type: 'signal', to: id, data: {
+    kind: 'caps',
+    remoteStart: canRemoteStart(id),
+    pinNeeded: pinNeeded,
+    pinSalt: pinNeeded ? d.pin.salt : undefined,
+  } });
+}
+
+// ---- PIN ----
+// Optional, per remembered device. The device then has to enter it on each
+// connection before its rights apply, so a stolen unlocked phone is not
+// enough. Stored here as a salted hash; the device sends a hash bound to this
+// connection's challenge. Five wrong tries lock the device out for 15 minutes.
+
+var PIN_MAX_TRIES = 5;
+var PIN_LOCK_MS = 15 * 60 * 1000;
+var pinFails = {}; // deviceId -> { count, until }
+
+function sha256Hex(text) {
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(function (buf) {
+    return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+      return ('0' + b.toString(16)).slice(-2);
+    }).join('');
+  });
+}
+
+function setPin(deviceId, pin) {
+  var d = trustedEntry(deviceId);
+  if (!d) return;
+  var clean = String(pin || '').trim();
+  var done = function () {
+    saveTrusted();
+    Object.keys(viewerInfo).forEach(function (id) {
+      if (viewerInfo[id].deviceId === deviceId) viewerInfo[id].pinOk = false;
+    });
+    renderDevices();
+    broadcastCaps();
+    applyControl();
+  };
+  if (!clean) {
+    delete d.pin;
+    done();
+    return;
+  }
+  var salt = randomHex(16);
+  sha256Hex(salt + ':' + clean).then(function (hash) {
+    d.pin = { salt: salt, hash: hash };
+    done();
+  });
+}
+
+function checkPin(id, hash) {
+  var info = viewerInfo[id];
+  var d = info && isTrusted(info.deviceId) ? trustedEntry(info.deviceId) : null;
+  if (!d || !d.pin || info.pinOk || typeof hash !== 'string') return;
+  var fails = pinFails[info.deviceId];
+  var reply = function (data) { viaSignal(id).send({ type: 'signal', to: id, data: data }); };
+  if (fails && fails.until > Date.now()) {
+    reply({ kind: 'pin-result', ok: false, locked: true });
+    return;
+  }
+  sha256Hex(info.nonce + ':' + d.pin.hash).then(function (expected) {
+    if (!viewerInfo[id]) return;
+    if (hash === expected) {
+      delete pinFails[info.deviceId];
+      info.pinOk = true;
+      reply({ kind: 'pin-result', ok: true });
+      sendCaps(id);
+      applyControl();
+      return;
+    }
+    if (!fails || fails.until) fails = { count: 0, until: 0 }; // a lock that ran out starts over
+    pinFails[info.deviceId] = fails;
+    fails.count++;
+    var locked = fails.count >= PIN_MAX_TRIES;
+    if (locked) {
+      fails.until = Date.now() + PIN_LOCK_MS;
+      fails.count = 0;
+      var text = t('pinLockedHost').replace('{who}', deviceLabel(info));
+      transferStatus(text);
+      if (window.ayva && window.ayva.notify) window.ayva.notify(text, '');
+    }
+    reply({ kind: 'pin-result', ok: false, locked: locked });
+  });
+}
+
+function startPinEdit(row, d) {
+  var input = document.createElement('input');
+  input.className = 'rename-input';
+  input.type = 'password';
+  input.inputMode = 'numeric';
+  input.maxLength = 8;
+  input.placeholder = t('pinPlaceholder');
+  var save = document.createElement('button');
+  save.className = 'small-btn';
+  save.textContent = t('save');
+  var done = function () {
+    var pin = input.value.trim();
+    if (pin && !/^\d{4,8}$/.test(pin)) {
+      input.value = '';
+      input.placeholder = t('pinRule');
+      return;
+    }
+    setPin(d.id, pin);
+  };
+  save.onclick = done;
+  input.onkeydown = function (e) {
+    if (e.key === 'Enter') done();
+    else if (e.key === 'Escape') renderDevices();
+  };
+  var actions = row.querySelector('.row');
+  actions.innerHTML = '';
+  actions.appendChild(input);
+  actions.appendChild(save);
+  if (d.pin) {
+    var remove = document.createElement('button');
+    remove.className = 'secondary small-btn';
+    remove.textContent = t('pinRemove');
+    remove.onclick = function () { setPin(d.id, ''); };
+    actions.appendChild(remove);
+  }
+  input.focus();
 }
 
 function broadcastCaps() {
@@ -1288,17 +1519,30 @@ function handleHubMessage(msg, sig) {
     viewerSignal[msg.id] = sig;
     handleViewerRequest(msg);
   } else if (msg.type === 'viewer-joined') {
-    viewerSignal[msg.id] = sig;
-    viewerInfo[msg.id] = { name: msg.name, deviceId: msg.deviceId, remote: msg.remote };
-    viewers[msg.id] = null;
-    connectViewer(msg.id);
-    sendCaps(msg.id);
-    applyControl();
+    startProof(msg, sig);
   } else if (msg.type === 'viewer-left') {
+    if (proving[msg.id]) {
+      clearTimeout(proving[msg.id].timer);
+      delete proving[msg.id];
+    }
     signalingLost(msg.id);
   } else if (msg.type === 'signal') {
-    handleViewerSignal(msg.from, msg.data);
+    if (proving[msg.from]) {
+      if (msg.data && msg.data.kind === 'proof') checkProof(msg.from, msg.data);
+    } else if (msg.from in viewerInfo) {
+      handleViewerSignal(msg.from, msg.data);
+    }
   }
+}
+
+// Let in and proven: from here on it gets the picture and its rights.
+function viewerAdmitted(msg, sig, nonce) {
+  viewerSignal[msg.id] = sig;
+  viewerInfo[msg.id] = { name: msg.name, deviceId: msg.deviceId, remote: msg.remote, nonce: nonce, pinOk: false };
+  viewers[msg.id] = null;
+  connectViewer(msg.id);
+  sendCaps(msg.id);
+  applyControl();
 }
 
 function connectCloud(info) {

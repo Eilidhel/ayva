@@ -9,6 +9,7 @@ const VIEWER_FILES = {
   '/watch.html': 'text/html; charset=utf-8',
   '/style.css': 'text/css; charset=utf-8',
   '/common.js': 'application/javascript; charset=utf-8',
+  '/devicekey.js': 'application/javascript; charset=utf-8',
   '/watch.js': 'application/javascript; charset=utf-8',
   '/control.js': 'application/javascript; charset=utf-8',
   '/inbox.js': 'application/javascript; charset=utf-8',

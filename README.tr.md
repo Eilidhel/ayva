@@ -19,13 +19,17 @@ Bilgisayarda Ayva'yı aç ve **Paylaşımı başlat**a bas. TV uygulaması bilgi
 
 **Bilgisayar (Windows 10/11):** `Ayva-Setup-x.y.z.exe` dosyasını çalıştır. Windows SmartScreen programın imzasız olduğunu söyleyebilir: **Ek bilgi → Yine de çalıştır** de. Kurulum, güvenlik duvarında Ayva'ya sadece yerel ağ için izin verir.
 
-**TV (Android TV / Google TV / Android uydu alıcıları, ör. Next Start 4K):** `Ayva-TV.apk` dosyasını kur:
+**TV (Android TV / Google TV / Android uydu alıcıları, ör. Next Start 4K):** `Ayva-Android.apk` dosyasını kur:
 
 1. APK'yı bir USB belleğe kopyala ve TV'ye ya da alıcıya tak.
 2. Bir dosya yöneticisiyle aç. Yoksa Google Play'den **File Commander** ya da **X-plore** kur.
 3. Sorulduğunda bu kaynaktan uygulama yüklenmesine izin ver.
 
-**Telefon:** hiçbir şey kurmana gerek yok. QR kodu okut ya da Ayva'da yazan linki aç.
+**Android telefon (önerilen):** Releases sayfasını telefonda aç, `Ayva-Android.apk` dosyasını indir (TV'dekiyle aynı uygulama), aç ve tarayıcından uygulama yüklenmesine izin ver. Evde uygulama bilgisayarı kendisi bulur. Dışarısı için **+ Sabit adres ekle**'ye dokunup sabit adresi bir kez yapıştır. Uygulama telefonun [cihaz anahtarını](#güvenlik) Android'in güvenli kasasında (Keystore) tutar; mikrofonu, dosya göndermeyi ve kayıtları kaydetmeyi de halleder.
+
+**iPhone / iPad:** Apple, App Store dışından uygulama kurulmasına izin vermediği için Ayva Safari'de çalışır. **Sabit adresi** Safari'de aç, sonra **Paylaş → Ana Ekrana Ekle**'ye dokun. Ayva'nın kendi simgesi olur ve uygulama gibi tam ekran açılır. Kendine ait bir hafızası olur, yani Safari geçmişini silmek cihaz anahtarını silmez. Mikrofon da orada çalışır.
+
+**Diğer telefonlar ve tarayıcılar:** hiçbir şey kurmana gerek yok. QR kodu okut ya da Ayva'da yazan linki aç. Bir tarayıcının hatırlanabilmesi için https bir adres gerekir (sabit adres ya da internet linki). `http://192.168.x.x` adresinde izleyebilir ama her seferinde sorulur.
 
 ## Kullanım
 
@@ -87,6 +91,12 @@ Programdaki **Hatırlanan cihazlar** listesinde her cihazın yanında iki kutu v
 - **Kontrol edebilir:** paylaşım sırasında cihaz, sen **Kontrolü aç**'a basmadan fareyi ve klavyeyi kullanabilir (dosya da gönderebilir). Diğer cihazlar yalnızca izler. **Ctrl+Alt+K** bunu paylaşım yeniden başlayana kadar durdurur.
 
 Bu kutular yalnızca izin verirken hatırladığın cihazlarda çıkar; bir kerelik izin verdiklerinde çıkmaz. **Unut** iki hakkı da hemen kaldırır.
+
+## Güvenlik
+
+**Cihaz anahtarı (mühür).** Bir cihazı hatırlattığında cihaz, kendisinden hiç çıkmayan bir anahtar üretir. Android uygulaması bunu Android'in güvenli kasasında (Keystore), tarayıcılar ise dışarı çıkarılamayan bir WebCrypto anahtarı olarak tutar. Cihaz her bağlandığında bilgisayar ona tek seferlik bir soru gönderir ve cihaz bunu anahtarıyla imzalar. İmza doğrulanmadan cihaza hiçbir şey (görüntü, haklar) gitmez. Böylece cihazın numarasını ağda duyan ya da kopyalayan biri onun yerine geçemez: bilgisayar bağlantısını keser ve sana haber verir. Kendi cihazlarından biri anahtarını kaybederse (ör. tarayıcı verileri silindiyse) onu **Unut** ve yeniden izin ver. 0.8.0'dan önce hatırlanan cihazlar, anahtar alabilmeleri için bir kez daha sorulur.
+
+**PIN.** **Hatırlanan cihazlar** listesinde **PIN** ile bir cihaza 4–8 haneli bir PIN koyabilirsin. O cihaz her bağlantıda, paylaşımı başlatmadan ya da kontrol etmeden önce PIN'i girer. Böylece kilidi açık bir telefon çalınsa bile yetmez. PIN bilgisayarda yalnızca tuzlanmış bir özet olarak saklanır, cihaz o bağlantıya özel bir özet gönderir. 5 yanlış denemede cihazın hakları 15 dakika kilitlenir ve bilgisayar sana haber verir.
 
 ## Telefonda kayıt
 
