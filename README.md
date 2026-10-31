@@ -160,6 +160,18 @@ The recording is kept in the phone's memory until it is saved, at about 30 MB pe
 **Talk** sends the phone's microphone to the computer's speakers while you watch. The computer accepts it from remembered devices, or from any device while control is allowed, and shows **microphone on** next to it. **Disconnect** or **Forget** stops it at once.
 Browsers only allow the microphone on https pages, so this works at the fixed address or the internet link, not at `http://192.168.x.x`. If the computer's sound is being shared, the phone hears its own voice back after a short delay; turn the phone's volume down or use headphones.
 
+**Bluetooth headphones on the phone:** using a Bluetooth headset's microphone switches it to "phone call" mode, and Android then stops the stream's sound in the headset. So while a Bluetooth headset is connected, **Talk** uses the phone's own microphone, and the stream keeps playing in the headphones.
+
+### Talking in Discord (or any other app)
+
+Ayva plays the phone's voice on the computer, and Windows has no way for one program to hand sound to another's microphone. A free virtual audio cable does that:
+
+1. Install **VB-CABLE** from [vb-audio.com/Cable](https://vb-audio.com/Cable/) (run the setup as administrator, then restart Windows).
+2. In Ayva, under **Phone voice ("Talk") plays on**, choose **CABLE Input**.
+3. In Discord, open **User Settings → Voice & Video** and set **Input Device** to **CABLE Output**.
+
+Now what you say into the phone goes to Discord. If the computer's sound is being shared, the phone also hears the others in Discord, and your own voice no longer comes back to you, because it goes into the cable instead of the speakers. Set the output back to **Default speakers** to hear the phone on the computer again.
+
 ## Running in the background
 
 Closing the window keeps Ayva running in the system tray, so TVs can still find the computer. Right-click the tray icon to **Quit**.

@@ -1117,6 +1117,7 @@ function micOffer(id, sdp) {
   var audio = new Audio();
   audio.autoplay = true;
   mics[id] = { pc: pc, audio: audio };
+  playOn(audio);
   pc.ontrack = function (e) {
     audio.srcObject = e.streams[0] || new MediaStream([e.track]);
     audio.play().catch(function () {});
@@ -1149,6 +1150,47 @@ function closeMic(id) {
   m.pc.close();
   m.audio.srcObject = null;
   renderDevices();
+}
+
+// The output the user picked (a virtual cable lets Discord hear the phone).
+var micOutput = storageGet('ayva-mic-output') || '';
+
+function playOn(audio) {
+  if (audio.setSinkId) audio.setSinkId(micOutput).catch(function () { audio.setSinkId(''); });
+}
+
+function listOutputs() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices || !('setSinkId' in HTMLMediaElement.prototype)) return;
+  navigator.mediaDevices.enumerateDevices().then(function (devices) {
+    var outputs = devices.filter(function (d) {
+      return d.kind === 'audiooutput' && d.deviceId !== 'default' && d.deviceId !== 'communications';
+    });
+    var select = $('micOutput');
+    select.innerHTML = '';
+    var first = document.createElement('option');
+    first.value = '';
+    first.textContent = t('micOutputDefault');
+    select.appendChild(first);
+    outputs.forEach(function (d) {
+      var o = document.createElement('option');
+      o.value = d.deviceId;
+      o.textContent = d.label || d.deviceId.slice(0, 8);
+      select.appendChild(o);
+    });
+    // A device that was unplugged: fall back to the default until it is back.
+    select.value = outputs.some(function (d) { return d.deviceId === micOutput; }) ? micOutput : '';
+    $('micOutRow').hidden = !outputs.length;
+  });
+}
+
+if (window.ayva) {
+  listOutputs();
+  if (navigator.mediaDevices) navigator.mediaDevices.addEventListener('devicechange', listOutputs);
+  $('micOutput').onchange = function () {
+    micOutput = this.value;
+    storageSet('ayva-mic-output', micOutput);
+    Object.keys(mics).forEach(function (id) { playOn(mics[id].audio); });
+  };
 }
 
 // Control was switched off: only remembered devices may keep talking.

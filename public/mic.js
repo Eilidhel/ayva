@@ -14,6 +14,44 @@ var Mic = (function () {
     if (signal) signal.send({ type: 'signal', data: data });
   }
 
+  var VOICE = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+  var HEADSET = /bluetooth|headset|hands-?free|airpods|buds|\bbt\b|sco/i;
+
+  // A Bluetooth headset's microphone switches it to "phone call" mode, and on
+  // Android that stops the stream's sound in the headset. So when a Bluetooth
+  // headset is connected, talk through the phone's own microphone instead.
+  // Device names are only known once the microphone was allowed, so the first
+  // time the choice is made after opening it.
+  function pickMic() {
+    if (!navigator.mediaDevices.enumerateDevices) return Promise.resolve(null);
+    return navigator.mediaDevices.enumerateDevices().then(function (devices) {
+      var inputs = devices.filter(function (d) {
+        return d.kind === 'audioinput' && d.label && d.deviceId !== 'default' && d.deviceId !== 'communications';
+      });
+      var headset = inputs.some(function (d) { return HEADSET.test(d.label); });
+      var builtIn = inputs.filter(function (d) { return !HEADSET.test(d.label); })[0];
+      return headset && builtIn ? builtIn.deviceId : null;
+    }).catch(function () { return null; });
+  }
+
+  function openMic() {
+    return pickMic().then(function (deviceId) {
+      var audio = Object.assign({}, VOICE);
+      if (deviceId) audio.deviceId = { exact: deviceId };
+      return navigator.mediaDevices.getUserMedia({ audio: audio });
+    }).then(function (s) {
+      var track = s.getAudioTracks()[0];
+      if (!track || !HEADSET.test(track.label)) return s;
+      // Opened the headset after all (names were unknown before): switch.
+      return pickMic().then(function (deviceId) {
+        if (!deviceId) return s;
+        s.getTracks().forEach(function (t) { t.stop(); });
+        var audio = Object.assign({ deviceId: { exact: deviceId } }, VOICE);
+        return navigator.mediaDevices.getUserMedia({ audio: audio });
+      });
+    });
+  }
+
   function update() {
     btn.hidden = APP || !(state !== 'off' || peerAlive());
     btn.textContent = t(state === 'on' ? 'micOff' : state === 'starting' ? 'micStarting' : 'micOn');
@@ -29,9 +67,7 @@ var Mic = (function () {
     }
     state = 'starting';
     update();
-    navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    }).then(function (s) {
+    openMic().then(function (s) {
       if (state !== 'starting') {
         s.getTracks().forEach(function (track) { track.stop(); });
         return;

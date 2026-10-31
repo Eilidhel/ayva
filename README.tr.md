@@ -158,6 +158,18 @@ Kayıt kaydedilene kadar telefonun belleğinde durur (dakikada yaklaşık 30 MB)
 İzlerken **Konuş** telefonun mikrofonunu bilgisayarın hoparlörüne verir. Bilgisayar bunu hatırlanan cihazlardan ya da kontrol açıkken herhangi bir cihazdan kabul eder ve yanında **mikrofon açık** yazar. **Bağlantıyı kes** ya da **Unut** hemen durdurur.
 Tarayıcılar mikrofona yalnızca https sayfalarında izin verdiği için bu özellik sabit adreste ya da internet linkinde çalışır, `http://192.168.x.x` adresinde çalışmaz. Bilgisayarın sesi de paylaşılıyorsa telefon kendi sesini kısa bir gecikmeyle geri duyar; telefonun sesini kıs ya da kulaklık kullan.
 
+**Telefonda Bluetooth kulaklık:** Bluetooth kulaklığın mikrofonu kullanılınca kulaklık "telefon görüşmesi" moduna geçer ve Android yayının sesini kulaklıkta keser. Bu yüzden Bluetooth kulaklık bağlıyken **Konuş** telefonun kendi mikrofonunu kullanır; yayın kulaklıkta çalmaya devam eder.
+
+### Discord'da (ya da başka bir programda) konuşma
+
+Ayva telefonun sesini bilgisayarda çalar. Windows'ta bir programın sesini başka bir programa mikrofon olarak vermenin yerleşik bir yolu yok; ücretsiz bir sanal ses kablosu bunu yapar:
+
+1. [vb-audio.com/Cable](https://vb-audio.com/Cable/) adresinden **VB-CABLE**'ı kur (kurulumu yönetici olarak çalıştır, sonra Windows'u yeniden başlat).
+2. Ayva'da **Telefonun sesi ("Konuş") şuradan çıksın** bölümünde **CABLE Input**'u seç.
+3. Discord'da **Kullanıcı Ayarları → Ses ve Görüntü** bölümünde **Giriş Cihazı** olarak **CABLE Output**'u seç.
+
+Artık telefona söylediklerin Discord'a gider. Bilgisayarın sesi paylaşılıyorsa telefon Discord'daki diğer kişileri de duyar; kendi sesin ise hoparlöre değil kabloya gittiği için sana geri gelmez. Telefonu yeniden bilgisayarın hoparlöründen duymak için çıkışı **Varsayılan hoparlör**'e geri al.
+
 ## Arka planda çalışma
 
 Pencereyi kapatınca Ayva saat yanındaki simgede çalışmaya devam eder, TV'ler bilgisayarı bulmayı sürdürür. Çıkmak için simgeye sağ tıklayıp **Çıkış**'ı seç.

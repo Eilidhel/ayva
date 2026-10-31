@@ -132,6 +132,14 @@
         <input id="startWithWindows" type="checkbox">
         <span data-i18n="startWithWindows"></span>
       </label>
+      <!-- Where a phone's "Talk" plays: speakers, or a virtual cable for Discord -->
+      <div id="micOutRow" class="mic-out" hidden>
+        <label class="row small">
+          <span data-i18n="micOutput"></span>
+          <select id="micOutput"></select>
+        </label>
+        <div class="muted small" data-i18n="micOutputHint"></div>
+      </div>
       <div id="trustedWrap" hidden>
         <div class="muted small" style="margin-top:16px" data-i18n="trustedTitle"></div>
         <div id="trusted" class="devices"></div>

@@ -177,6 +177,8 @@ select {
 .approval-box { width: min(440px, 100%); }
 
 #historyBox summary, #turn summary { cursor: pointer; }
+.mic-out { margin-top: 16px; }
+.mic-out select { max-width: 100%; }
 .turn-form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .turn-form .rename-input { flex: 1 1 200px; }
 #turnSettings { display: grid; gap: 8px; margin-top: 8px; justify-items: start; }
