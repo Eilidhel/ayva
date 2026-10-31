@@ -365,7 +365,8 @@ function openPeer(id, creds) {
   // them: on a slow decoder, syncing makes it stretch the sound to wait for
   // late frames, which is heard as crackling.
   stream.getVideoTracks().forEach(function (track) { pc.addTrack(track, new MediaStream([track])); });
-  stream.getAudioTracks().forEach(function (track) { pc.addTrack(track, new MediaStream([track])); });
+  var sound = outgoingAudio();
+  if (sound) pc.addTrack(sound, new MediaStream([sound]));
   if (controlSupported) openControlChannel(id, pc);
   openTransferChannel(id, pc);
 
@@ -1121,6 +1122,7 @@ function micOffer(id, sdp) {
   pc.ontrack = function (e) {
     audio.srcObject = e.streams[0] || new MediaStream([e.track]);
     audio.play().catch(function () {});
+    echoAddVoice(id, e.track);
   };
   pc.onicecandidate = function (e) {
     if (e.candidate) viaSignal(id).send({ type: 'signal', to: id, data: { kind: 'mic-candidate', candidate: e.candidate } });
@@ -1147,9 +1149,94 @@ function closeMic(id) {
   var m = mics[id];
   if (!m) return;
   delete mics[id];
+  echoRemoveVoice(id);
   m.pc.close();
   m.audio.srcObject = null;
   renderDevices();
+}
+
+// ---- Leaving the phone's own voice out of the stream ----
+// The computer's sound is captured from the speakers' mix, so it includes the
+// phone's voice as played here, and the phone would hear itself a moment
+// later. While a phone talks, the sound sent to viewers goes through
+// echo-cut.js, which subtracts that voice and leaves everything else.
+
+var echo = null; // { ctx, node, input, out, mix, voices: { id: { track, source } }, ready }
+
+function outgoingAudio() {
+  var input = stream && stream.getAudioTracks()[0];
+  if (!input) return null;
+  return echo && echo.ready && echo.input === input ? echo.out : input;
+}
+
+function setOutgoingAudio() {
+  var track = outgoingAudio();
+  Object.keys(viewers).forEach(function (id) {
+    var pc = viewers[id];
+    if (!pc) return;
+    pc.getSenders().forEach(function (sender) {
+      if (sender.track && sender.track.kind === 'audio' && sender.track !== track) {
+        sender.replaceTrack(track).catch(function () {});
+      }
+    });
+  });
+}
+
+function startEcho() {
+  var input = stream && stream.getAudioTracks()[0];
+  if (echo || !input || !window.AudioWorkletNode) return;
+  var ctx = new AudioContext({ sampleRate: 48000, latencyHint: 'interactive' });
+  var e = echo = { ctx: ctx, input: input, voices: {}, ready: false };
+  e.mix = ctx.createGain();
+  ctx.audioWorklet.addModule('/echo-cut.js').then(function () {
+    return ctx.resume();
+  }).then(function () {
+    // A stopped context would send silence: keep the plain sound then.
+    if (echo !== e || ctx.state !== 'running') throw new Error('not running');
+    e.node = new AudioWorkletNode(ctx, 'echo-cut', {
+      numberOfInputs: 2,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+      channelCount: 2,
+      channelCountMode: 'explicit',
+    });
+    ctx.createMediaStreamSource(new MediaStream([input])).connect(e.node, 0, 0);
+    e.mix.connect(e.node, 0, 1);
+    var dest = ctx.createMediaStreamDestination();
+    dest.channelCount = 2;
+    e.node.connect(dest);
+    e.out = dest.stream.getAudioTracks()[0];
+    e.ready = true;
+    setOutgoingAudio();
+  }).catch(function () {
+    if (echo === e) stopEcho();
+  });
+}
+
+function stopEcho() {
+  if (!echo) return;
+  var e = echo;
+  echo = null;
+  setOutgoingAudio();
+  e.ctx.close().catch(function () {});
+}
+
+function echoAddVoice(id, track) {
+  if (!track || track.kind !== 'audio') return;
+  startEcho();
+  if (!echo) return;
+  echoRemoveVoice(id);
+  var source = echo.ctx.createMediaStreamSource(new MediaStream([track]));
+  source.connect(echo.mix);
+  echo.voices[id] = { track: track, source: source };
+}
+
+// The cleaner stays on until sharing stops: switching the sound back and
+// forth would make a small gap each time a phone stops talking.
+function echoRemoveVoice(id) {
+  if (!echo || !echo.voices[id]) return;
+  echo.voices[id].source.disconnect();
+  delete echo.voices[id];
 }
 
 // The output the user picked (a virtual cable lets Discord hear the phone).
@@ -1441,6 +1528,12 @@ function replaceSource(next) {
     if (needsReconnect) connectViewer(id);
   });
   broadcastControlState(); // pointing at the picture may have become (un)available
+  // The cleaner listened to the old sound; start it again on the new one.
+  if (echo) {
+    var voices = echo.voices;
+    stopEcho();
+    Object.keys(voices).forEach(function (id) { echoAddVoice(id, voices[id].track); });
+  }
 }
 
 function capture() {
@@ -1504,6 +1597,7 @@ function stopSharing() {
   stream.getTracks().forEach(function (track) { track.stop(); });
   stream = null;
   Object.keys(mics).forEach(closeMic);
+  stopEcho();
   $('preview').srcObject = null;
   viewerStats = {};
   renderStats();

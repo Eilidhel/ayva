@@ -158,7 +158,7 @@ The recording is kept in the phone's memory until it is saved, at about 30 MB pe
 ## Talking through the computer
 
 **Talk** sends the phone's microphone to the computer's speakers while you watch. The computer accepts it from remembered devices, or from any device while control is allowed, and shows **microphone on** next to it. **Disconnect** or **Forget** stops it at once.
-Browsers only allow the microphone on https pages, so this works at the fixed address or the internet link, not at `http://192.168.x.x`. If the computer's sound is being shared, the phone hears its own voice back after a short delay; turn the phone's volume down or use headphones.
+Browsers only allow the microphone on https pages, so this works at the fixed address or the internet link, not at `http://192.168.x.x`. **You don't hear yourself.** The computer's sound is captured from the speakers' mix, which includes your voice as the computer plays it. While you talk, Ayva subtracts exactly that voice from the sound it sends back, so the phone gets everything else (other people, games, music) without your own voice. It takes about three seconds to lock on after you start talking; after that your voice is about 45 dB quieter in the returned sound, which is inaudible.
 
 **Bluetooth headphones on the phone:** using a Bluetooth headset's microphone switches it to "phone call" mode, and Android then stops the stream's sound in the headset. So while a Bluetooth headset is connected, **Talk** uses the phone's own microphone, and the stream keeps playing in the headphones.
 

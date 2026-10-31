@@ -156,7 +156,7 @@ Kayıt kaydedilene kadar telefonun belleğinde durur (dakikada yaklaşık 30 MB)
 ## Bilgisayardan konuşma
 
 İzlerken **Konuş** telefonun mikrofonunu bilgisayarın hoparlörüne verir. Bilgisayar bunu hatırlanan cihazlardan ya da kontrol açıkken herhangi bir cihazdan kabul eder ve yanında **mikrofon açık** yazar. **Bağlantıyı kes** ya da **Unut** hemen durdurur.
-Tarayıcılar mikrofona yalnızca https sayfalarında izin verdiği için bu özellik sabit adreste ya da internet linkinde çalışır, `http://192.168.x.x` adresinde çalışmaz. Bilgisayarın sesi de paylaşılıyorsa telefon kendi sesini kısa bir gecikmeyle geri duyar; telefonun sesini kıs ya da kulaklık kullan.
+Tarayıcılar mikrofona yalnızca https sayfalarında izin verdiği için bu özellik sabit adreste ya da internet linkinde çalışır, `http://192.168.x.x` adresinde çalışmaz. **Kendi sesini duymazsın.** Bilgisayarın sesi hoparlöre giden karışımdan alınır; bu karışımda bilgisayarın çaldığı senin sesin de vardır. Sen konuşurken Ayva, geri gönderdiği sesten tam olarak o sesi çıkarır; telefona diğer her şey (başka kişiler, oyun, müzik) gider ama kendi sesin gitmez. Konuşmaya başladıktan sonra kilitlenmesi yaklaşık üç saniye sürer; sonrasında sesin geri dönen seste yaklaşık 45 dB kısılır, yani duyulmaz.
 
 **Telefonda Bluetooth kulaklık:** Bluetooth kulaklığın mikrofonu kullanılınca kulaklık "telefon görüşmesi" moduna geçer ve Android yayının sesini kulaklıkta keser. Bu yüzden Bluetooth kulaklık bağlıyken **Konuş** telefonun kendi mikrofonunu kullanır; yayın kulaklıkta çalmaya devam eder.
 
