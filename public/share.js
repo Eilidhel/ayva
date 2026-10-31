@@ -1335,6 +1335,7 @@ function startEcho() {
       channelCount: 2,
       channelCountMode: 'explicit',
     });
+    e.node.port.onmessage = function (m) { if (echo === e) showEchoState(m.data); };
     ctx.createMediaStreamSource(new MediaStream([input])).connect(e.node, 0, 0);
     e.mix.connect(e.node, 0, 1);
     var dest = ctx.createMediaStreamDestination();
@@ -1348,8 +1349,30 @@ function startEcho() {
   });
 }
 
+// What the cleaner reports once a second, shown under the output picker.
+function showEchoState(s) {
+  var el = $('echoState');
+  if (!s || !Object.keys(mics).length) {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  if (s.delay < 0) {
+    el.textContent = t('echoSearching');
+    return;
+  }
+  var ms = Math.round(s.delay / 48);
+  // How much quieter the sound got only says something while the phone talks.
+  var talking = s.voice > 1e-6 && s.captured > 1e-9;
+  var db = talking ? Math.round(10 * Math.log10(s.captured / Math.max(s.sent, 1e-12))) : 0;
+  el.textContent = talking && db > 0
+    ? t('echoWorkingDb').replace('{ms}', ms).replace('{db}', db)
+    : t('echoWorking').replace('{ms}', ms);
+}
+
 function stopEcho() {
   if (!echo) return;
+  $('echoState').hidden = true;
   var e = echo;
   echo = null;
   setOutgoingAudio();
