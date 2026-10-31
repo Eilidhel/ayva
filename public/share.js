@@ -2038,6 +2038,31 @@ $('revealBtn').onclick = function () {
   updateUi();
 };
 if (window.ayva) $('audioTip').textContent = t('tvAppTip');
+// ---- Version and updates ----
+// The installed app updates itself from GitHub Releases (desktop/updater.js);
+// this row shows where that stands and offers to check or install.
+
+function renderUpdate(s) {
+  if (!s) return;
+  $('updateRow').hidden = false;
+  var key = !s.supported ? 'updVersion'
+    : { latest: 'updLatest', checking: 'updChecking', downloading: 'updDownloading', ready: 'updReady', error: 'updError' }[s.state] || 'updVersion';
+  $('updateText').textContent = t(key).replace('{v}', s.current).replace('{new}', s.version || '');
+  var btn = $('updateBtn');
+  btn.hidden = !s.supported || s.state === 'checking' || s.state === 'downloading';
+  btn.textContent = t(s.state === 'ready' ? 'updInstall' : 'updCheck');
+  btn.className = s.state === 'ready' ? 'small-btn' : 'secondary small-btn';
+  btn.onclick = function () {
+    if (s.state === 'ready') window.ayva.installUpdate();
+    else window.ayva.checkUpdates();
+  };
+}
+
+if (window.ayva && window.ayva.updateStatus) {
+  window.ayva.updateStatus().then(renderUpdate);
+  window.ayva.onUpdateState(renderUpdate);
+}
+
 if (window.ayva && window.ayva.getStartWithWindows) {
   $('startWithWindowsRow').hidden = false;
   window.ayva.getStartWithWindows().then(function (on) { $('startWithWindows').checked = !!on; });

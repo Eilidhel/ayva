@@ -39,6 +39,11 @@ contextBridge.exposeInMainWorld('ayva', {
   turnCredentials: (ttl) => ipcRenderer.invoke('turn-credentials', ttl),
   turnRevoke: (username) => ipcRenderer.invoke('turn-revoke', username),
 
+  updateStatus: () => ipcRenderer.invoke('update-status'),
+  checkUpdates: () => ipcRenderer.send('update-check'),
+  installUpdate: () => ipcRenderer.send('update-install'),
+  onUpdateState: (fn) => ipcRenderer.on('update-state', (_e, status) => fn(status)),
+
   getStartWithWindows: () => ipcRenderer.invoke('get-start-with-windows'),
   setStartWithWindows: (on) => ipcRenderer.invoke('set-start-with-windows', on),
 });

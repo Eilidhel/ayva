@@ -29,6 +29,9 @@ class Updater {
     this.autoUpdater = autoUpdater;
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = false;
+    // A test build (0.8.3-test.1) would otherwise only look for "test"
+    // releases, which never exist; everyone follows the normal releases.
+    autoUpdater.allowPrerelease = false;
 
     autoUpdater.on('checking-for-update', () => this.set('checking'));
     autoUpdater.on('update-available', (info) => {
@@ -73,6 +76,11 @@ class Updater {
     if (this.state !== 'ready') return;
     // Silent install, then start Ayva again.
     this.autoUpdater.quitAndInstall(true, true);
+  }
+
+  // For the app window: the running version and what the updater is doing.
+  status() {
+    return { supported: this.supported, current: app.getVersion(), state: this.state, version: this.version };
   }
 
   // Entry for the tray menu, or null when updates are not supported.

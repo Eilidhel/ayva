@@ -181,7 +181,7 @@ The internet link changes each time internet access is turned on, so Ayva cannot
 ## Updates
 
 The installed app checks GitHub Releases for a new version at startup and every few hours, and downloads it in the background.
-Restarting would end a running share, so Ayva never installs on its own: click the notification or **Restart to update** in the tray menu when it suits you. **Check for updates** in the tray menu checks right away.
+Restarting would end a running share, so Ayva never installs on its own: click the notification, or **Restart and update** at the bottom of the Ayva window (or in the tray menu), when it suits you. The same line shows the installed version, and **Check for updates** there checks right away.
 
 The Android app (0.8.1 and later) also checks GitHub Releases when it opens. When there is a new version, **⬆ Update to Ayva x.y.z** appears at the top of the list: tap it to download the update and open Android's own install prompt. The first time, Android asks you to let Ayva install apps. The version line at the bottom of the list checks right away. Going from 0.8.0 to 0.8.1 is a one-time manual install.
 

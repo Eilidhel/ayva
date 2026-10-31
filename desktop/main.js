@@ -296,6 +296,9 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 }
 
+// Notifications show this name; it must match the installer's shortcut (build.appId).
+if (process.platform === 'win32') app.setAppUserModelId('io.github.ayva.desktop');
+
 app.on('second-instance', () => showWindow());
 
 async function startServer() {
@@ -360,7 +363,14 @@ const STARTED_HIDDEN = process.argv.includes('--hidden'); // launched with Windo
 let tray = null;
 let quitting = false;
 let toldAboutTray = false;
-const updater = new Updater(TR, () => updateTrayMenu());
+const updater = new Updater(TR, () => {
+  updateTrayMenu();
+  if (win) win.webContents.send('update-state', updater.status());
+});
+
+ipcMain.handle('update-status', () => updater.status());
+ipcMain.on('update-check', (event) => { if (fromOurWindow(event)) updater.check(true); });
+ipcMain.on('update-install', (event) => { if (fromOurWindow(event)) updater.install(); });
 
 function showWindow() {
   if (!win) return;

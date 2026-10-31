@@ -179,7 +179,7 @@ Programdaki (ya da simge menüsündeki) **Windows açılınca Ayva'yı arka plan
 ## Güncellemeler
 
 Kurulu program açılışta ve birkaç saatte bir GitHub Releases'te yeni sürüm olup olmadığına bakar, varsa arka planda indirir.
-Yeniden başlatmak süren paylaşımı keseceği için Ayva kendi kendine kurmaz: uygun olduğunda bildirime ya da simge menüsündeki **Yeniden başlat ve güncelle**'ye tıkla. **Güncellemeleri denetle** hemen kontrol eder.
+Yeniden başlatmak süren paylaşımı keseceği için Ayva kendi kendine kurmaz: uygun olduğunda bildirime ya da Ayva penceresinin altındaki (veya simge menüsündeki) **Yeniden başlat ve güncelle**'ye tıkla. Aynı satır kurulu sürümü de gösterir; oradaki **Güncellemeleri denetle** hemen kontrol eder.
 
 Android uygulaması (0.8.1 ve sonrası) da açılışta GitHub Releases'e bakar. Yeni sürüm varsa listenin en üstünde **⬆ Ayva x.y.z sürümüne güncelle** görünür; dokununca indirir ve Android'in kendi kurulum sorusunu açar. İlk seferde Android, Ayva'nın uygulama kurmasına izin vermeni ister. Listenin altındaki sürüm satırı hemen denetler. 0.8.0'dan 0.8.1'e geçiş bir kez elle yapılır.
 
