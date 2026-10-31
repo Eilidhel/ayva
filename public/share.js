@@ -41,6 +41,9 @@ function updateUi() {
   $('switchBtn').hidden = !live;
   $('quality').disabled = live;
   $('controlBtn').hidden = !live || !controlSupported;
+  $('privacyBtn').hidden = !live || !privacySupported || !(controlOn || deviceControl || privacyOn);
+  $('privacyBtn').textContent = t(privacyOn ? 'privacyOff' : 'privacyOn');
+  $('privacyBtn').className = privacyOn ? 'danger' : 'secondary';
   $('controlBtn').textContent = controlOn ? t('controlOff') : t('controlOn');
   $('controlBtn').className = controlOn ? 'danger' : 'secondary';
   var canSend = live && fileTargets().length > 0;
@@ -49,6 +52,10 @@ function updateUi() {
   var deviceControl = !controlOn && Object.keys(viewerInfo).some(controlAllowed);
   $('controlHint').hidden = !live || !(controlOn || deviceControl);
   $('controlHint').textContent = t(deviceControl ? 'controlHintDevices' : 'controlHint');
+  if (privacyOn && live) {
+    $('controlHint').hidden = false;
+    $('controlHint').textContent = t('privacyHint');
+  }
   $('viewerCount').textContent = Object.keys(viewers).length;
   if (live) setStatus('');
   else if (signal && signal.ws && signal.ws.readyState === WebSocket.OPEN) setStatus(t('notStreaming'));
@@ -303,7 +310,10 @@ function applyControl() {
   var needed = Object.keys(viewerInfo).some(controlAllowed) || controlOn;
   window.ayva.setControl(needed).then(function (enabled) {
     if (!enabled) controlOn = false;
+    // Dark screens only make sense while someone is using the computer.
+    if (privacyOn && !controlOn && !Object.keys(viewerInfo).some(controlAllowed)) setPrivacy(false);
     broadcastControlState();
+    broadcastCaps();
     dropUnallowedMics();
     updateUi();
     renderDevices();
@@ -519,6 +529,15 @@ function handleViewerSignal(id, data) {
   }
   if (data.kind === 'pin') {
     checkPin(id, data.hash);
+    return;
+  }
+  if (data.kind === 'privacy') {
+    if (mayPrivacy(id)) setPrivacy(!!data.on, id);
+    else sendCaps(id);
+    return;
+  }
+  if (data.kind === 'pick-screen') {
+    pickScreen(id, data.id);
     return;
   }
   if (data.kind === 'start-share' || data.kind === 'stop-share') {
@@ -951,11 +970,16 @@ function sendCaps(id) {
   var info = viewerInfo[id];
   var d = info && isTrusted(info.deviceId) ? trustedEntry(info.deviceId) : null;
   var pinNeeded = !!d && !!d.pin && !info.pinOk && !!(d.canStart || d.canControl);
+  var pick = mayPickScreen(id) && screens.length > 1;
   viaSignal(id).send({ type: 'signal', to: id, data: {
     kind: 'caps',
     remoteStart: canRemoteStart(id),
     pinNeeded: pinNeeded,
     pinSalt: pinNeeded ? d.pin.salt : undefined,
+    privacy: privacyOn,
+    mayPrivacy: mayPrivacy(id),
+    screens: pick ? screens.map(function (s, i) { return { id: s.id, name: screenLabel(s, i) }; }) : [],
+    screen: pick ? currentSource : null,
   } });
 }
 
@@ -1099,6 +1123,7 @@ function remoteShare(id, start) {
   var info = viewerInfo[id];
   window.ayva.remoteStart($('pickerAudio').checked).then(function (result) {
     logEvent(result && result.ok ? 'remoteStart' : 'remoteFailed', info);
+    if (result && result.ok) currentSource = result.sourceId;
     var text = result && result.ok ? t('remoteStarted').replace('{who}', who)
       : t('remoteStartFailed').replace('{who}', who) + (result && result.error ? result.error : '');
     transferStatus(text);
@@ -1110,6 +1135,86 @@ function remoteShare(id, start) {
 function remoteCapture(absolute) {
   absolutePointer = !!absolute;
   return Promise.resolve(capture()).then(function () { return !!stream; });
+}
+
+// ---- Privacy mode and choosing the screen ----
+// A device that may use this computer can darken its screens here (the stream
+// goes on; see setPrivacy in desktop/main.js) and pick which screen is shared.
+
+var privacySupported = false;
+var privacyOn = false;
+var screens = []; // [{ id, primary, size }] left to right, while sharing
+var currentSource = null;
+
+function mayPrivacy(id) {
+  return privacySupported && !!stream && controlAllowed(id);
+}
+
+function mayPickScreen(id) {
+  return !!stream && (canRemoteStart(id) || controlAllowed(id));
+}
+
+function screenLabel(s, i) {
+  return t('screenName').replace('{n}', i + 1) + (s.primary ? ' (' + t('screenMain') + ')' : '') + (s.size ? ' · ' + s.size : '');
+}
+
+function setPrivacy(on, byId) {
+  if (!window.ayva || !window.ayva.setPrivacy) return;
+  window.ayva.setPrivacy(on).then(function (state) {
+    var changed = privacyOn !== !!state;
+    privacyOn = !!state;
+    if (changed && privacyOn && byId && viewerInfo[byId]) {
+      var text = t('privacyByDevice').replace('{who}', deviceLabel(viewerInfo[byId]));
+      transferStatus(text);
+      window.ayva.notify(text, '');
+      logEvent('privacy', viewerInfo[byId]);
+    }
+    updateUi();
+    broadcastCaps();
+  });
+}
+
+function refreshScreens() {
+  if (!window.ayva || !window.ayva.listScreens || !stream) {
+    screens = [];
+    return;
+  }
+  window.ayva.listScreens().then(function (list) {
+    screens = list || [];
+    broadcastCaps();
+  });
+}
+
+function pickScreen(id, sourceId) {
+  var index = -1;
+  screens.forEach(function (s, i) { if (s.id === sourceId) index = i; });
+  if (!mayPickScreen(id) || index < 0 || sourceId === currentSource) {
+    sendCaps(id);
+    return;
+  }
+  var info = viewerInfo[id];
+  var name = screenLabel(screens[index], index);
+  window.ayva.remoteStart(null, sourceId).then(function (result) {
+    if (result && result.ok) {
+      currentSource = result.sourceId;
+      transferStatus(t('screenSwitched').replace('{who}', deviceLabel(info)).replace('{screen}', name));
+      logEvent('screen', info, 0, name);
+    }
+    broadcastCaps();
+  });
+}
+
+if (window.ayva && window.ayva.privacySupported) {
+  window.ayva.privacySupported().then(function (ok) {
+    privacySupported = !!ok;
+    updateUi();
+  });
+  window.ayva.onPrivacyForcedOff(function () {
+    privacyOn = false;
+    updateUi();
+    broadcastCaps();
+  });
+  $('privacyBtn').onclick = function () { setPrivacy(!privacyOn); };
 }
 
 // ---- Recording on a viewer ----
@@ -1520,6 +1625,7 @@ function openPicker() {
         $('picker').hidden = true;
         window.ayva.selectSource(source.id, $('pickerAudio').checked).then(function (result) {
           absolutePointer = !!(result && result.absolute);
+          currentSource = result && result.sourceId;
           return capture();
         });
       };
@@ -1612,6 +1718,7 @@ function capture() {
     if (window.ayva && window.ayva.hideFromCapture) window.ayva.hideFromCapture(true);
     $('preview').srcObject = s;
     if (!switching) Object.keys(viewers).forEach(connectViewer);
+    refreshScreens();
     applyControl();
   }).catch(function (err) {
     if (err && err.name === 'NotAllowedError') return; // user cancelled the picker
@@ -1628,6 +1735,9 @@ function stopSharing() {
   stream = null;
   Object.keys(mics).forEach(closeMic);
   stopEcho();
+  screens = [];
+  currentSource = null;
+  if (privacyOn) setPrivacy(false);
   $('preview').srcObject = null;
   viewerStats = {};
   renderStats();
@@ -1933,6 +2043,7 @@ var HISTORY_TEXT = {
   kicked: 'histKicked', proofFailed: 'histProofFailed', pinWrong: 'histPinWrong',
   pinLocked: 'histPinLocked', remoteStart: 'remoteStarted', remoteStop: 'remoteStopped',
   remoteFailed: 'histRemoteFailed', recording: 'histRecording', talking: 'histTalking',
+  privacy: 'histPrivacy', screen: 'histScreen',
 };
 var HISTORY_ALERT = { denied: true, proofFailed: true, pinWrong: true, pinLocked: true };
 var connHistory = [];
@@ -1943,8 +2054,9 @@ try {
   connHistory = [];
 }
 
-function logEvent(event, info, ms) {
+function logEvent(event, info, ms, what) {
   var entry = { at: Date.now(), e: event, who: deviceLabel(info) };
+  if (what) entry.what = what;
   if (event === 'joined') entry.via = info && info.remote ? 'internet' : 'lan';
   if (ms) entry.ms = ms;
   connHistory.push(entry);
@@ -1984,6 +2096,7 @@ function renderHistory() {
       .replace('{who}', h.who)
       .replace('{via}', t(h.via === 'internet' ? 'viaInternet' : 'viaLan'))
       .replace('{time}', durationText(h.ms))
+      .replace('{screen}', h.what || '')
       .replace(/\.$/, '');
     row.appendChild(when);
     row.appendChild(what);

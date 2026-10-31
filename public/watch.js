@@ -237,6 +237,39 @@ $('remoteStartBtn').onclick = function () {
   }, 15000);
 };
 
+// ---- Darkening the computer's screens, and picking the screen ----
+// Offered by the computer to devices that may use it (see share.js).
+
+var privacyState = false;
+
+function updateComputerExtras(caps) {
+  privacyState = !!caps.privacy;
+  var btn = $('privacyBtn');
+  btn.hidden = !caps.mayPrivacy;
+  btn.textContent = t(privacyState ? 'privacyLighten' : 'privacyDarken');
+  btn.className = privacyState ? 'danger' : 'secondary';
+
+  var select = $('screenSelect');
+  var list = Array.isArray(caps.screens) ? caps.screens : [];
+  select.innerHTML = '';
+  list.forEach(function (s) {
+    var o = document.createElement('option');
+    o.value = String(s.id);
+    o.textContent = String(s.name);
+    select.appendChild(o);
+  });
+  select.value = caps.screen || '';
+  select.hidden = list.length < 2;
+}
+
+$('privacyBtn').onclick = function () {
+  signal.send({ type: 'signal', data: { kind: 'privacy', on: !privacyState } });
+};
+
+$('screenSelect').onchange = function () {
+  signal.send({ type: 'signal', data: { kind: 'pick-screen', id: this.value } });
+};
+
 $('remoteStopBtn').onclick = function () {
   signal.send({ type: 'signal', data: { kind: 'stop-share' } });
 };
@@ -526,6 +559,7 @@ function handleHostSignal(data) {
     canRemoteStart = !!data.remoteStart;
     pinSalt = data.pinNeeded ? String(data.pinSalt || '') : null;
     updateRemoteStart();
+    updateComputerExtras(data);
   } else if (data.kind === 'pin-result') {
     pinResult(data);
   } else if (/^mic-/.test(data.kind)) {

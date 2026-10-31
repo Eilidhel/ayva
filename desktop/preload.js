@@ -4,7 +4,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('ayva', {
   getSources: () => ipcRenderer.invoke('get-sources'),
   selectSource: (sourceId, audio) => ipcRenderer.invoke('select-source', { sourceId, audio }),
-  remoteStart: (audio) => ipcRenderer.invoke('remote-start', audio),
+  remoteStart: (audio, sourceId) => ipcRenderer.invoke('remote-start', audio, sourceId),
+  listScreens: () => ipcRenderer.invoke('list-screens'),
+  privacySupported: () => ipcRenderer.invoke('privacy-supported'),
+  setPrivacy: (on) => ipcRenderer.invoke('set-privacy', on),
+  onPrivacyForcedOff: (fn) => ipcRenderer.on('privacy-forced-off', () => fn()),
   hideFromCapture: (on) => ipcRenderer.send('hide-from-capture', on),
   notify: (title, body, filePath) => ipcRenderer.send('notify', title, body, filePath),
 

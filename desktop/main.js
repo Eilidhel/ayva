@@ -22,6 +22,7 @@ const LAST_PORT = 3010;
 // Emergency switch: turns remote control off from the keyboard, even while
 // someone else is moving the mouse.
 const CONTROL_OFF_SHORTCUT = 'CommandOrControl+Alt+K';
+const PRIVACY_OFF_SHORTCUT = 'CommandOrControl+Alt+P';
 
 let win = null;
 let server = null;
@@ -337,22 +338,112 @@ ipcMain.handle('select-source', (_event, choice) => {
   // Pointing at a spot on the picture ("absolute" mouse) needs to know which
   // screen the picture is; for a shared window only relative moves work.
   selected = { sourceId, audio: !!choice.audio, displayId: screenDisplayIds[sourceId] || null };
-  return { absolute: !!selected.displayId };
+  return { absolute: !!selected.displayId, sourceId };
+});
+
+// The computer's screens, left to right, for a phone to choose from.
+ipcMain.handle('list-screens', async () => {
+  const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } });
+  const displays = screen.getAllDisplays();
+  const primary = String(screen.getPrimaryDisplay().id);
+  return sources
+    .map((s) => {
+      const d = displays.find((x) => String(x.id) === String(s.display_id));
+      return {
+        id: s.id,
+        primary: String(s.display_id) === primary,
+        x: d ? d.bounds.x : 0,
+        size: d ? Math.round(d.size.width * d.scaleFactor) + '×' + Math.round(d.size.height * d.scaleFactor) : '',
+      };
+    })
+    .sort((a, b) => a.x - b.x)
+    .map(({ id, primary, size }) => ({ id, primary, size }));
 });
 
 // A remembered device asked to start sharing (the share page checks that the
 // user allows this): share the main screen without the picker. Screen capture
 // needs a user gesture, so the page's capture runs as if from a click.
-ipcMain.handle('remote-start', async (event, audio) => {
+// With sourceId (a phone picked another screen) it switches to that screen,
+// keeping the sound setting.
+ipcMain.handle('remote-start', async (event, audio, sourceId) => {
   if (!fromOurWindow(event)) return { error: 'denied' };
   const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } });
   const primary = String(screen.getPrimaryDisplay().id);
-  const source = sources.find((s) => String(s.display_id) === primary) || sources[0];
+  const source = (sourceId && sources.find((s) => s.id === sourceId))
+    || sources.find((s) => String(s.display_id) === primary) || sources[0];
   if (!source) return { error: 'no screen' };
-  selected = { sourceId: source.id, audio: !!audio, displayId: source.display_id ? String(source.display_id) : null };
+  const withAudio = audio === undefined || audio === null ? selected.audio : !!audio;
+  selected = { sourceId: source.id, audio: withAudio, displayId: source.display_id ? String(source.display_id) : null };
   const started = await win.webContents.executeJavaScript('remoteCapture(' + !!selected.displayId + ')', true);
-  return started ? { ok: true } : { error: 'capture failed' };
+  return started ? { ok: true, sourceId: source.id } : { error: 'capture failed' };
 });
+
+// ---- Privacy mode ----
+// While a phone uses this computer, its screens can go dark here: a black
+// window on every display, left out of screen capture (Windows 10 2004+), so
+// the stream still shows the desktop. It ignores the mouse, so clicks from the
+// phone reach the windows below. Ctrl+Alt+P turns it off at the computer.
+
+let privacyWindows = [];
+
+// WDA_EXCLUDEFROMCAPTURE needs Windows 10 2004 (build 19041); before that the
+// black windows would cover the stream too.
+const privacySupported = process.platform === 'win32'
+  && Number(require('os').release().split('.')[2] || 0) >= 19041;
+
+function privacyPage() {
+  const text = TR()
+    ? 'Bu bilgisayar şu anda Ayva ile uzaktan kullanılıyor.<br>Ekranı geri açmak için Ctrl+Alt+P\'ye bas.'
+    : 'This computer is being used remotely with Ayva.<br>Press Ctrl+Alt+P to bring the screen back.';
+  return 'data:text/html;charset=utf-8,' + encodeURIComponent(
+    '<!doctype html><html><body style="margin:0;height:100vh;background:#000;color:#777;'
+    + 'font:16px system-ui,sans-serif;display:flex;align-items:flex-end;justify-content:center;'
+    + 'cursor:none;user-select:none"><p style="margin:0 0 6vh;text-align:center;line-height:1.6">'
+    + text + '</p></body></html>');
+}
+
+function setPrivacy(on) {
+  privacyWindows.forEach((w) => { if (!w.isDestroyed()) w.destroy(); });
+  privacyWindows = [];
+  if (!on || !privacySupported) return false;
+  for (const d of screen.getAllDisplays()) {
+    const w = new BrowserWindow({
+      x: d.bounds.x,
+      y: d.bounds.y,
+      width: d.bounds.width,
+      height: d.bounds.height,
+      frame: false,
+      show: false,
+      focusable: false,
+      skipTaskbar: true,
+      resizable: false,
+      movable: false,
+      backgroundColor: '#000000',
+      webPreferences: { javascript: false },
+    });
+    w.setContentProtection(true);
+    w.setIgnoreMouseEvents(true);
+    w.setAlwaysOnTop(true, 'screen-saver');
+    w.setBounds(d.bounds);
+    w.loadURL(privacyPage());
+    w.showInactive();
+    // Again once shown: the capture exclusion only sticks to a visible window.
+    w.setContentProtection(true);
+    privacyWindows.push(w);
+  }
+  return true;
+}
+
+ipcMain.handle('privacy-supported', () => privacySupported);
+ipcMain.handle('set-privacy', (event, on) => (fromOurWindow(event) ? setPrivacy(!!on) : privacyWindows.length > 0));
+
+// A screen plugged in or out while dark: cover the new layout. (screen is
+// only usable once the app is ready.)
+function watchDisplays() {
+  ['display-added', 'display-removed', 'display-metrics-changed'].forEach((name) => {
+    screen.on(name, () => { if (privacyWindows.length) setPrivacy(true); });
+  });
+}
 
 // ---- Running in the background ----
 // Closing the window hides it to the tray icon; the server keeps running, so
@@ -504,11 +595,17 @@ app.whenReady().then(async () => {
     setControl(false);
     if (win) win.webContents.send('control-forced-off');
   });
+  watchDisplays();
+  globalShortcut.register(PRIVACY_OFF_SHORTCUT, () => {
+    setPrivacy(false);
+    if (win) win.webContents.send('privacy-forced-off');
+  });
 });
 
 app.on('before-quit', () => { quitting = true; });
 
 app.on('will-quit', () => {
+  setPrivacy(false);
   releaseAll();
   stopInternet();
   globalShortcut.unregisterAll();

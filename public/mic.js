@@ -15,39 +15,35 @@ var Mic = (function () {
   }
 
   var VOICE = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
-  var HEADSET = /bluetooth|headset|hands-?free|airpods|buds|\bbt\b|sco/i;
+  // With headphones nothing echoes back into the microphone, so no canceller.
+  var HEADPHONES = { echoCancellation: false, noiseSuppression: true, autoGainControl: true };
+  var HEADSET = /bluetooth|headset|headphone|hands-?free|airpods|buds|\bbt\b|sco/i;
 
-  // A Bluetooth headset's microphone switches it to "phone call" mode, and on
-  // Android that stops the stream's sound in the headset. So when a Bluetooth
-  // headset is connected, talk through the phone's own microphone instead.
+  // On Android the echo canceller puts the phone in "phone call" mode: a
+  // Bluetooth headset then switches to its call profile (the stream's sound
+  // stops), and naming the phone's own microphone moves the sound to the
+  // loudspeaker. Without the canceller the phone stays in media mode: the
+  // sound keeps playing in the headphones and the phone's microphone is used.
   // Device names are only known once the microphone was allowed, so the first
-  // time the choice is made after opening it.
-  function pickMic() {
-    if (!navigator.mediaDevices.enumerateDevices) return Promise.resolve(null);
+  // time the check is made after opening it.
+  function headphones() {
+    if (!navigator.mediaDevices.enumerateDevices) return Promise.resolve(false);
     return navigator.mediaDevices.enumerateDevices().then(function (devices) {
-      var inputs = devices.filter(function (d) {
-        return d.kind === 'audioinput' && d.label && d.deviceId !== 'default' && d.deviceId !== 'communications';
-      });
-      var headset = inputs.some(function (d) { return HEADSET.test(d.label); });
-      var builtIn = inputs.filter(function (d) { return !HEADSET.test(d.label); })[0];
-      return headset && builtIn ? builtIn.deviceId : null;
-    }).catch(function () { return null; });
+      return devices.some(function (d) { return d.label && HEADSET.test(d.label); });
+    }).catch(function () { return false; });
   }
 
   function openMic() {
-    return pickMic().then(function (deviceId) {
-      var audio = Object.assign({}, VOICE);
-      if (deviceId) audio.deviceId = { exact: deviceId };
-      return navigator.mediaDevices.getUserMedia({ audio: audio });
+    var withHeadphones;
+    return headphones().then(function (h) {
+      withHeadphones = h;
+      return navigator.mediaDevices.getUserMedia({ audio: h ? HEADPHONES : VOICE });
     }).then(function (s) {
-      var track = s.getAudioTracks()[0];
-      if (!track || !HEADSET.test(track.label)) return s;
-      // Opened the headset after all (names were unknown before): switch.
-      return pickMic().then(function (deviceId) {
-        if (!deviceId) return s;
+      if (withHeadphones) return s;
+      return headphones().then(function (h) {
+        if (!h) return s;
         s.getTracks().forEach(function (t) { t.stop(); });
-        var audio = Object.assign({ deviceId: { exact: deviceId } }, VOICE);
-        return navigator.mediaDevices.getUserMedia({ audio: audio });
+        return navigator.mediaDevices.getUserMedia({ audio: HEADPHONES });
       });
     });
   }

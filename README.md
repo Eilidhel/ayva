@@ -127,6 +127,8 @@ While sharing, press **Allow control**. Watching devices can then use the comput
 Control is **off by default** and turns off whenever sharing stops or Ayva restarts. **Ctrl+Alt+K** on the computer switches it off immediately.
 Windows does not let other programs control windows running as administrator (such as Task Manager), and Ctrl+Alt+Del cannot be sent.
 
+**Privacy mode.** While a phone uses the computer, **Darken computer screen** on the phone (or **Privacy mode** in Ayva) turns the computer's monitors black, so people in the room don't see what you do; the stream still shows the desktop. The black screens say that the computer is being used remotely, and **Ctrl+Alt+P** at the computer brings them back. Privacy mode ends by itself when nobody is controlling the computer any more or sharing stops. The keyboard and mouse at the computer keep working. It needs Windows 10 version 2004 or newer.
+
 ## Files and clipboard
 
 - **Computer → phone:** **Send file** and **Send clipboard** appear while a phone or browser is watching. Received items show up on the phone with **Save** or **Copy**.
@@ -141,6 +143,8 @@ Under **Remembered devices** in the app, each device has two boxes, both off by 
 - **Can control:** while sharing, the device can use the mouse and keyboard (and send files) without you pressing **Allow control**. Other devices still only watch. **Ctrl+Alt+K** stops it until sharing starts again.
 
 Only devices you remembered when allowing them get these boxes, never one you let in just once. **Forget** takes both rights away at once.
+
+**Choosing the screen:** with more than one monitor, a device that may start sharing or control gets a screen menu while it watches (Screen 1, Screen 2 (main), left to right) and can switch without reconnecting. The computer shows who switched.
 
 ## Security
 
@@ -162,7 +166,7 @@ The recording is kept in the phone's memory until it is saved, at about 30 MB pe
 **Talk** sends the phone's microphone to the computer's speakers while you watch. The computer accepts it from remembered devices, or from any device while control is allowed, and shows **microphone on** next to it. **Disconnect** or **Forget** stops it at once.
 Browsers only allow the microphone on https pages, so this works at the fixed address or the internet link, not at `http://192.168.x.x`. **You don't hear yourself.** The computer's sound is captured from the speakers' mix, which includes your voice as the computer plays it. While you talk, Ayva subtracts exactly that voice from the sound it sends back, so the phone gets everything else (other people, games, music) without your own voice. It takes about three seconds to lock on after you start talking; after that your voice is about 45 dB quieter in the returned sound, which is inaudible.
 
-**Bluetooth headphones on the phone:** using a Bluetooth headset's microphone switches it to "phone call" mode, and Android then stops the stream's sound in the headset. So while a Bluetooth headset is connected, **Talk** uses the phone's own microphone, and the stream keeps playing in the headphones.
+**Bluetooth headphones on the phone:** using a Bluetooth headset's microphone switches it to "phone call" mode, and Android then stops the stream's sound in the headset. So while headphones are connected, **Talk** turns off the phone's echo canceller (headphones don't echo), which keeps the phone in media mode: the stream keeps playing in the headphones and the phone's own microphone picks up your voice.
 
 ### Talking in Discord (or any other app)
 

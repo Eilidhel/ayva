@@ -125,6 +125,8 @@ Paylaşım açıkken **Kontrolü aç**'a bas. İzleyen cihazlar bilgisayarın fa
 Kontrol **varsayılan olarak kapalıdır**. Paylaşım durunca ya da Ayva yeniden açılınca kapanır. Bilgisayarda **Ctrl+Alt+K** kontrolü anında kapatır.
 Windows, yönetici olarak çalışan pencerelerin (ör. Görev Yöneticisi) kontrol edilmesine izin vermez. Ctrl+Alt+Del de gönderilemez.
 
+**Gizlilik modu.** Bir telefon bilgisayarı kullanırken telefondaki **Bilgisayar ekranını karart** (ya da Ayva'daki **Gizlilik modu**) bilgisayarın monitörlerini karartır; odadakiler ne yaptığını görmez, yayın ise masaüstünü göstermeye devam eder. Kararan ekranlarda bilgisayarın uzaktan kullanıldığı yazar; bilgisayarda **Ctrl+Alt+P** ekranları geri açar. Kimse bilgisayarı kontrol etmediğinde ya da paylaşım durduğunda gizlilik modu kendiliğinden kapanır. Bilgisayardaki klavye ve fare çalışmaya devam eder. Windows 10 sürüm 2004 veya daha yenisi gerekir.
+
 ## Dosya ve pano
 
 - **Bilgisayar → telefon:** telefon ya da tarayıcı izlerken **Dosya gönder** ve **Panoyu gönder** butonları çıkar. Gelenler telefonda **Kaydet** ya da **Kopyala** butonuyla görünür.
@@ -139,6 +141,8 @@ Programdaki **Hatırlanan cihazlar** listesinde her cihazın yanında iki kutu v
 - **Kontrol edebilir:** paylaşım sırasında cihaz, sen **Kontrolü aç**'a basmadan fareyi ve klavyeyi kullanabilir (dosya da gönderebilir). Diğer cihazlar yalnızca izler. **Ctrl+Alt+K** bunu paylaşım yeniden başlayana kadar durdurur.
 
 Bu kutular yalnızca izin verirken hatırladığın cihazlarda çıkar; bir kerelik izin verdiklerinde çıkmaz. **Unut** iki hakkı da hemen kaldırır.
+
+**Ekran seçme:** Birden fazla monitör varsa, paylaşımı başlatabilen ya da kontrol edebilen bir cihaz izlerken bir ekran menüsü görür (soldan sağa Ekran 1, Ekran 2 (ana)) ve bağlantı kopmadan ekran değiştirebilir. Bilgisayar kimin değiştirdiğini gösterir.
 
 ## Güvenlik
 
@@ -160,7 +164,7 @@ Kayıt kaydedilene kadar telefonun belleğinde durur (dakikada yaklaşık 30 MB)
 İzlerken **Konuş** telefonun mikrofonunu bilgisayarın hoparlörüne verir. Bilgisayar bunu hatırlanan cihazlardan ya da kontrol açıkken herhangi bir cihazdan kabul eder ve yanında **mikrofon açık** yazar. **Bağlantıyı kes** ya da **Unut** hemen durdurur.
 Tarayıcılar mikrofona yalnızca https sayfalarında izin verdiği için bu özellik sabit adreste ya da internet linkinde çalışır, `http://192.168.x.x` adresinde çalışmaz. **Kendi sesini duymazsın.** Bilgisayarın sesi hoparlöre giden karışımdan alınır; bu karışımda bilgisayarın çaldığı senin sesin de vardır. Sen konuşurken Ayva, geri gönderdiği sesten tam olarak o sesi çıkarır; telefona diğer her şey (başka kişiler, oyun, müzik) gider ama kendi sesin gitmez. Konuşmaya başladıktan sonra kilitlenmesi yaklaşık üç saniye sürer; sonrasında sesin geri dönen seste yaklaşık 45 dB kısılır, yani duyulmaz.
 
-**Telefonda Bluetooth kulaklık:** Bluetooth kulaklığın mikrofonu kullanılınca kulaklık "telefon görüşmesi" moduna geçer ve Android yayının sesini kulaklıkta keser. Bu yüzden Bluetooth kulaklık bağlıyken **Konuş** telefonun kendi mikrofonunu kullanır; yayın kulaklıkta çalmaya devam eder.
+**Telefonda Bluetooth kulaklık:** Bluetooth kulaklığın mikrofonu kullanılınca kulaklık "telefon görüşmesi" moduna geçer ve Android yayının sesini kulaklıkta keser. Bu yüzden kulaklık bağlıyken **Konuş** telefonun yankı engelleyicisini kapatır (kulaklıkta yankı olmaz); telefon medya modunda kalır, yayın kulaklıkta çalmaya devam eder ve sesini telefonun kendi mikrofonu alır.
 
 ### Discord'da (ya da başka bir programda) konuşma
 
