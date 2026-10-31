@@ -17,7 +17,10 @@ var Mic = (function () {
   var VOICE = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
   // With headphones nothing echoes back into the microphone, so no canceller.
   var HEADPHONES = { echoCancellation: false, noiseSuppression: true, autoGainControl: true };
-  var HEADSET = /bluetooth|headset|headphone|hands-?free|airpods|buds|\bbt\b|sco/i;
+  // Plugged-in or wireless headphones. Not "Headset earpiece": Chrome's name
+  // for every phone's own call speaker, which would turn the canceller off
+  // with the sound coming out of the loudspeaker.
+  var HEADSET = /bluetooth|wired|usb|headphone|hands-?free|airpods|buds|\bbt\b|sco/i;
 
   // On Android the echo canceller puts the phone in "phone call" mode: a
   // Bluetooth headset then switches to its call profile (the stream's sound
