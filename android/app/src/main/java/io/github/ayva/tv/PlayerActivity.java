@@ -28,6 +28,10 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
+import androidx.webkit.ProxyConfig;
+import androidx.webkit.ProxyController;
+import androidx.webkit.WebViewFeature;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,6 +55,7 @@ public class PlayerActivity extends Activity {
     private volatile String currentOrigin;
     private PermissionRequest pendingMic;
     private ValueCallback<Uri[]> pendingFiles;
+    private SplitProxy proxy; // only for the fixed address
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
@@ -117,6 +122,22 @@ public class PlayerActivity extends Activity {
         setContentView(root);
         hideSystemUi();
 
+        // The fixed address goes through SplitProxy, past networks that block workers.dev.
+        String host = Uri.parse(url).getHost();
+        if (host != null && host.endsWith(".workers.dev")
+                && WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
+            try {
+                proxy = new SplitProxy(host);
+                int port = proxy.start();
+                ProxyController.getInstance().setProxyOverride(
+                        new ProxyConfig.Builder().addProxyRule("127.0.0.1:" + port).build(),
+                        Runnable::run, () -> web.loadUrl(url));
+                return;
+            } catch (Exception e) {
+                if (proxy != null) proxy.stop();
+                proxy = null;
+            }
+        }
         web.loadUrl(url);
     }
 
@@ -245,6 +266,10 @@ public class PlayerActivity extends Activity {
         if (web != null) {
             web.loadUrl("about:blank");
             web.destroy();
+        }
+        if (proxy != null) {
+            proxy.stop();
+            ProxyController.getInstance().clearProxyOverride(Runnable::run, () -> { });
         }
         super.onDestroy();
     }

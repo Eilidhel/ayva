@@ -51,4 +51,6 @@ android {
 dependencies {
     // QR decoding only (pure Java, no Google Play services), for ScanActivity.
     implementation 'com.google.zxing:core:3.5.3'
+    // ProxyController, so the fixed address can go through SplitProxy.
+    implementation 'androidx.webkit:webkit:1.11.0'
 }

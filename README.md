@@ -64,7 +64,7 @@ Cloudflare offers these quick tunnels free of charge but meant for testing, with
 
 Press **Set up a fixed address (Cloudflare)** in Ayva and follow the steps: on a free Cloudflare account, create an API token from the "Edit Cloudflare Workers" template, paste it into Ayva and choose a viewing password. Ayva deploys itself to your account and gives you a link like `https://ayva.<name>.workers.dev`, with a QR code, that **never changes**. A phone enters the password once and then connects with the same link every time.
 
-**Phone stuck on "Connecting to server…":** some internet providers block `workers.dev` addresses. In Chrome choose **⋮ → Settings → Privacy and security → Use secure DNS → Choose another provider → Cloudflare (1.1.1.1)** and reopen the page. (The Ayva app does this on the computer by itself.)
+**Phone stuck on "Connecting to server…":** some internet providers block `workers.dev` addresses. In Chrome choose **⋮ → Settings → Privacy and security → Use secure DNS → Choose another provider → Cloudflare (1.1.1.1)** and reopen the page. (The Ayva app does this on the computer by itself.) The Android app needs no setting: on such networks it sends the connection's opening message in two parts, so the filter cannot read the address, without touching the encryption.
 
 ## Backup route (Cloudflare TURN)
 
