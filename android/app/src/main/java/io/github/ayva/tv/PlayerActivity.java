@@ -56,6 +56,8 @@ public class PlayerActivity extends Activity {
     private PermissionRequest pendingMic;
     private ValueCallback<Uri[]> pendingFiles;
     private SplitProxy proxy; // only for the fixed address
+    private LocalForward forward; // only on the home network
+    private String proofOrigin; // the computer's real address, named in device proofs
     private MediaModeKeeper mediaMode;
     private boolean micUsed; // the page has had the microphone
 
@@ -65,8 +67,25 @@ public class PlayerActivity extends Activity {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        String url = getIntent().getStringExtra(EXTRA_URL);
-        origin = originOf(url);
+        String asked = getIntent().getStringExtra(EXTRA_URL);
+        proofOrigin = originOf(asked);
+        // On the home network the page is plain http, where WebView allows no
+        // microphone; through LocalForward it is http://127.0.0.1, which counts
+        // as secure. Proofs still name the computer's real address.
+        String url = asked;
+        Uri target = asked == null ? null : Uri.parse(asked);
+        if (target != null && "http".equals(target.getScheme()) && target.getHost() != null
+                && !"127.0.0.1".equals(target.getHost()) && !"localhost".equals(target.getHost())) {
+            try {
+                forward = new LocalForward(target.getHost(), target.getPort() == -1 ? 80 : target.getPort());
+                url = target.buildUpon().encodedAuthority("127.0.0.1:" + forward.start()).build().toString();
+            } catch (Exception e) {
+                if (forward != null) forward.stop();
+                forward = null;
+            }
+        }
+        final String pageUrl = url;
+        origin = originOf(pageUrl);
         currentOrigin = origin;
 
         mediaMode = new MediaModeKeeper(this);
@@ -108,7 +127,7 @@ public class PlayerActivity extends Activity {
         web.setWebChromeClient(new Chrome());
         if (DeviceKey.supported()) {
             web.addJavascriptInterface(new DeviceKey(
-                    () -> origin != null && origin.equals(currentOrigin) ? origin : null), "AyvaKey");
+                    () -> origin != null && origin.equals(currentOrigin) ? proofOrigin : null), "AyvaKey");
         }
         web.addJavascriptInterface(new FileSaver(this), "AyvaFiles");
         FrameLayout root = new FrameLayout(this);
@@ -135,14 +154,14 @@ public class PlayerActivity extends Activity {
                 int port = proxy.start();
                 ProxyController.getInstance().setProxyOverride(
                         new ProxyConfig.Builder().addProxyRule("127.0.0.1:" + port).build(),
-                        Runnable::run, () -> web.loadUrl(url));
+                        Runnable::run, () -> web.loadUrl(pageUrl));
                 return;
             } catch (Exception e) {
                 if (proxy != null) proxy.stop();
                 proxy = null;
             }
         }
-        web.loadUrl(url);
+        web.loadUrl(pageUrl);
     }
 
     // Only the path: links may carry an access key, which must not end up in a screenshot.
@@ -290,6 +309,7 @@ public class PlayerActivity extends Activity {
             web.loadUrl("about:blank");
             web.destroy();
         }
+        if (forward != null) forward.stop();
         if (proxy != null) {
             proxy.stop();
             ProxyController.getInstance().clearProxyOverride(Runnable::run, () -> { });

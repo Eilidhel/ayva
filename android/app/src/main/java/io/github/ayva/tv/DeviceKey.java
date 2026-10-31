@@ -68,6 +68,17 @@ class DeviceKey {
         return Base64.encodeToString(key.getEncoded(), Base64.NO_WRAP);
     }
 
+    /**
+     * The address proofs name: the computer's own, also when the page is
+     * reached through 127.0.0.1 (LocalForward).
+     */
+    @JavascriptInterface
+    public String proofOrigin() {
+        String origin = originSource.origin();
+        if (origin == null) throw new SecurityException("origin");
+        return origin.toLowerCase(java.util.Locale.ROOT);
+    }
+
     /** Base64 DER ECDSA signature of "ayva-device-proof:<origin>:<nonce>". */
     @JavascriptInterface
     public String signProof(String nonce) throws Exception {

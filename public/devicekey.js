@@ -95,7 +95,12 @@ var DeviceKey = (function () {
   // { key, sig, origin } (key: base64 SPKI, sig: base64 raw P-256) or null when
   // this device has no safe place for a key.
   function prove(nonce) {
+    // In the Android app the page may be reached through 127.0.0.1; the app
+    // then names the computer's real address.
     var origin = location.origin;
+    if (native && native.proofOrigin) {
+      try { origin = native.proofOrigin(); } catch (e) { return Promise.resolve(null); }
+    }
     var message = PREFIX + origin + ':' + nonce;
     if (native) {
       try {
