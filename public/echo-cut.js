@@ -11,6 +11,9 @@
 //      averages, and subtract the copy. Other sounds (people, games, music)
 //      are unrelated to the voice, so they average out of the estimate and
 //      pass through untouched.
+//   3. follow the copy's loudness within a tenth of a second: Windows and
+//      call apps such as Discord turn other programs down while someone
+//      talks, which would leave the slow estimate too loud or too quiet.
 // Until a delay is found the sound passes through unchanged. Once a second it
 // reports what it is doing ({ delay, captured, sent, voice } powers).
 
@@ -27,6 +30,7 @@ const TAPS = 32;             // filter length around the found delay
 const LEAD = 12;             // taps before the delay (the search is exact to ±8 samples)
 const MEMORY = 4 * 48000;    // samples the averages remember (~4 s)
 const SOLVE_EVERY = 12000;   // samples between filter updates (0.25 s)
+const GAIN_TRACK = 1 / 4800; // the copy's loudness is followed within ~0.1 s
 
 const H = HISTORY - 1;
 const R = REF_SIZE - 1;
@@ -78,6 +82,11 @@ class EchoCut extends AudioWorkletProcessor {
     this.r = new Float64Array(TAPS);
     this.p = [new Float64Array(TAPS), new Float64Array(TAPS)];
     this.w = [new Float32Array(TAPS), new Float32Array(TAPS)];
+    // Fast loudness correction per channel: a gain s on the copy, learned
+    // against the copy's power py and what is left over, pe (other sound).
+    this.s = [1, 1];
+    this.py = [0, 0];
+    this.pe = [0, 0];
     this.A = new Float64Array(TAPS * TAPS);
     this.wTmp = new Float64Array(TAPS);
     this.sinceSolve = 0;
@@ -170,6 +179,9 @@ class EchoCut extends AudioWorkletProcessor {
     this.p[1].fill(0);
     this.w[0].fill(0);
     this.w[1].fill(0);
+    this.s = [1, 1];
+    this.py = [0, 0];
+    this.pe = [0, 0];
     this.sinceSolve = SOLVE_EVERY - 4800; // first estimate after 0.1 s
   }
 
@@ -184,6 +196,16 @@ class EchoCut extends AudioWorkletProcessor {
         this.A[i * TAPS + i] += r0 * 1e-4; // keeps it solvable when the voice is narrow
       }
       if (cholSolve(this.A, this.p[c], this.wTmp, TAPS)) {
+        // Carry the loudness correction over to the new filter, so the copy
+        // being subtracted does not jump: s·w_old ≈ s_new·w_new.
+        let on = 0;
+        let nn = 0;
+        for (let j = 0; j < TAPS; j++) {
+          on += this.w[c][j] * this.wTmp[j];
+          nn += this.wTmp[j] * this.wTmp[j];
+        }
+        const s = nn > 0 && on > 0 ? this.s[c] * on / nn : 1;
+        this.s[c] = Math.min(4, Math.max(0, s));
         for (let j = 0; j < TAPS; j++) this.w[c][j] = this.wTmp[j];
       }
     }
@@ -237,7 +259,14 @@ class EchoCut extends AudioWorkletProcessor {
             y += w[j] * x[j];
             p[j] += d * x[j];
           }
-          e = d - y;
+          e = d - this.s[c] * y;
+          this.py[c] += GAIN_TRACK * (y * y - this.py[c]);
+          this.pe[c] += GAIN_TRACK * (e * e - this.pe[c]);
+          // Fast while the voice dominates, slower the louder other sound is.
+          if (this.py[c] > 1e-10) {
+            const s = this.s[c] + GAIN_TRACK * e * y / (this.py[c] + this.pe[c]);
+            this.s[c] = Math.min(4, Math.max(0, s));
+          }
         }
         out[c][i] = e;
         if (c === 0) {
