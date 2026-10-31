@@ -101,6 +101,16 @@ class EchoCut extends AudioWorkletProcessor {
     this.sum = 0;
     this.sumSq = 0;
     this.count = 0;
+    // A diagnostic recording in progress: voice, captured (left), sent (left).
+    this.rec = null;
+    this.recAt = 0;
+    this.port.onmessage = (m) => {
+      if (m.data && m.data.record) {
+        const n = Math.min(48000 * 20, m.data.record | 0);
+        this.rec = [new Float32Array(n), new Float32Array(n), new Float32Array(n)];
+        this.recAt = 0;
+      }
+    };
     // Report.
     this.repCap = 0;
     this.repOut = 0;
@@ -272,6 +282,15 @@ class EchoCut extends AudioWorkletProcessor {
         if (c === 0) {
           this.repCap += d * d;
           this.repOut += e * e;
+          if (this.rec) {
+            this.rec[0][this.recAt] = r;
+            this.rec[1][this.recAt] = d;
+            this.rec[2][this.recAt] = e;
+            if (++this.recAt >= this.rec[0].length) {
+              this.port.postMessage({ recording: this.rec, delay: this.delay });
+              this.rec = null;
+            }
+          }
         }
       }
 

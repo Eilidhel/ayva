@@ -435,6 +435,16 @@ function setPrivacy(on) {
 }
 
 ipcMain.handle('privacy-supported', () => privacySupported);
+
+// A diagnostic recording (see share.js) goes to Desktop\Ayva, like received files.
+ipcMain.handle('save-diagnostic', (event, name, data) => {
+  if (!fromOurWindow(event) || !(data instanceof ArrayBuffer || ArrayBuffer.isView(data))) return null;
+  const dir = path.join(app.getPath('desktop'), 'Ayva');
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, path.basename(String(name)).replace(/[^\w.-]/g, '_'));
+  fs.writeFileSync(file, Buffer.from(data instanceof ArrayBuffer ? data : data.buffer));
+  return file;
+});
 ipcMain.handle('set-privacy', (event, on) => (fromOurWindow(event) ? setPrivacy(!!on) : privacyWindows.length > 0));
 
 // A screen plugged in or out while dark: cover the new layout. (screen is

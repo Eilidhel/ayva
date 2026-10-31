@@ -1335,7 +1335,11 @@ function startEcho() {
       channelCount: 2,
       channelCountMode: 'explicit',
     });
-    e.node.port.onmessage = function (m) { if (echo === e) showEchoState(m.data); };
+    e.node.port.onmessage = function (m) {
+      if (echo !== e) return;
+      if (m.data && m.data.recording) saveEchoRecording(m.data.recording, m.data.delay);
+      else showEchoState(m.data);
+    };
     ctx.createMediaStreamSource(new MediaStream([input])).connect(e.node, 0, 0);
     e.mix.connect(e.node, 0, 1);
     var dest = ctx.createMediaStreamDestination();
@@ -1354,9 +1358,11 @@ function showEchoState(s) {
   var el = $('echoState');
   if (!s || !Object.keys(mics).length) {
     el.hidden = true;
+    $('echoRecordBtn').hidden = true;
     return;
   }
   el.hidden = false;
+  $('echoRecordBtn').hidden = false;
   if (s.delay < 0) {
     el.textContent = t('echoSearching');
     return;
@@ -1370,9 +1376,56 @@ function showEchoState(s) {
     : t('echoWorking').replace('{ms}', ms);
 }
 
+// ---- Diagnostic recording ----
+// Ten seconds of the phone's voice, the computer's sound as captured and the
+// sound sent back, as one 3-channel WAV the user saves. Only on request, and
+// it never leaves this computer by itself.
+
+function wav(channels, rate) {
+  var n = channels[0].length;
+  var k = channels.length;
+  var buf = new ArrayBuffer(44 + n * k * 2);
+  var v = new DataView(buf);
+  var str = function (at, s) { for (var i = 0; i < s.length; i++) v.setUint8(at + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + n * k * 2, true); str(8, 'WAVE');
+  str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, k, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * k * 2, true); v.setUint16(32, k * 2, true); v.setUint16(34, 16, true);
+  str(36, 'data'); v.setUint32(40, n * k * 2, true);
+  var at = 44;
+  for (var i = 0; i < n; i++) {
+    for (var c = 0; c < k; c++) {
+      var x = Math.max(-1, Math.min(1, channels[c][i]));
+      v.setInt16(at, x < 0 ? x * 0x8000 : x * 0x7fff, true);
+      at += 2;
+    }
+  }
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+function saveEchoRecording(channels, delay) {
+  $('echoRecordBtn').disabled = false;
+  $('echoRecordBtn').textContent = t('echoRecord');
+  var name = 'ayva-echo-' + new Date().toISOString().replace(/[:.]/g, '-') + '-delay' + delay + '.wav';
+  wav(channels, 48000).arrayBuffer().then(function (data) {
+    return window.ayva.saveDiagnostic(name, data);
+  }).then(function (file) {
+    if (!file) return;
+    transferStatus(t('echoRecordSaved').replace('{file}', file));
+    window.ayva.notify(t('echoRecordSaved').replace('{file}', file), '', file);
+  });
+}
+
+$('echoRecordBtn').onclick = function () {
+  if (!echo || !echo.node) return;
+  this.disabled = true;
+  this.textContent = t('echoRecording');
+  echo.node.port.postMessage({ record: 48000 * 10 });
+};
+
 function stopEcho() {
   if (!echo) return;
   $('echoState').hidden = true;
+  $('echoRecordBtn').hidden = true;
   var e = echo;
   echo = null;
   setOutgoingAudio();

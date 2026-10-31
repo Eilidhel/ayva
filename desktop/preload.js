@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('ayva', {
   remoteStart: (audio, sourceId) => ipcRenderer.invoke('remote-start', audio, sourceId),
   listScreens: () => ipcRenderer.invoke('list-screens'),
   privacySupported: () => ipcRenderer.invoke('privacy-supported'),
+  saveDiagnostic: (name, data) => ipcRenderer.invoke('save-diagnostic', name, data),
   setPrivacy: (on) => ipcRenderer.invoke('set-privacy', on),
   onPrivacyForcedOff: (fn) => ipcRenderer.on('privacy-forced-off', () => fn()),
   hideFromCapture: (on) => ipcRenderer.send('hide-from-capture', on),
