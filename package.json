@@ -1,7 +1,7 @@
 {
   "name": "ayva",
   "productName": "Ayva",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Share your computer screen to any TV over the internet, like a Discord stream. Self-hosted, browser-based, no cables.",
   "author": "Ayva contributors",
   "main": "desktop/main.js",
