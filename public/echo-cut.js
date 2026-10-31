@@ -19,7 +19,8 @@
 
 const DECIMATE = 8;          // delay search runs at 6 kHz
 const HISTORY = 8192;        // decimated samples kept (~1.4 s), a power of two
-const SEARCH_EVERY = 1500;   // decimated samples between searches (0.25 s)
+const SEARCH_EVERY = 1500;   // decimated samples between searches (0.25 s)…
+const SEARCH_LOCKED = 12000; // …and once the delay is known (2 s), to notice it moving
 const WINDOW = 3000;         // decimated samples compared per search (0.5 s)
 const MAX_LAG = 4800;        // longest delay looked for (0.8 s)
 const LAGS_PER_BLOCK = 50;   // search work per 128-sample block (a search takes ~0.27 s)
@@ -116,6 +117,12 @@ class EchoCut extends AudioWorkletProcessor {
     this.repOut = 0;
     this.repVoice = 0;
     this.repN = 0;
+    // Gaps: a block of exact digital silence right after sound, the trace of
+    // audio arriving late (a busy computer). Counted per input, reported.
+    this.gapsVoice = 0;
+    this.gapsCap = 0;
+    this.lastVoice = 0;
+    this.lastCap = 0;
   }
 
   // Snapshot of the last WINDOW decimated samples, as first differences
@@ -141,8 +148,8 @@ class EchoCut extends AudioWorkletProcessor {
     this.nextLag = this.capPow < 1e-9 ? -1 : 0;
   }
 
-  continueSearch() {
-    const last = Math.min(MAX_LAG, this.nextLag + LAGS_PER_BLOCK - 1);
+  continueSearch(lags) {
+    const last = Math.min(MAX_LAG, this.nextLag + lags - 1);
     const cap = this.capWin;
     const ref = this.refSeg;
     for (let k = this.nextLag; k <= last; k++) {
@@ -303,7 +310,7 @@ class EchoCut extends AudioWorkletProcessor {
         this.accRef = 0;
         this.accCap = 0;
         this.dt++;
-        if (++this.sinceSearch >= SEARCH_EVERY && this.dt > WINDOW + MAX_LAG + 1 && this.nextLag < 0) {
+        if (++this.sinceSearch >= (locked ? SEARCH_LOCKED : SEARCH_EVERY) && this.dt > WINDOW + MAX_LAG + 1 && this.nextLag < 0) {
           this.sinceSearch = 0;
           this.startSearch();
         }
@@ -318,7 +325,8 @@ class EchoCut extends AudioWorkletProcessor {
       this.solveSecond = false;
       this.solve(1);
     }
-    if (this.nextLag >= 0) this.continueSearch();
+    // Searching costs most; once locked it can take its time.
+    if (this.nextLag >= 0) this.continueSearch(locked ? 12 : LAGS_PER_BLOCK);
     // Anything gone wrong: pass the sound as it came and start the filter over.
     for (let c = 0; c < channels; c++) {
       if (!Number.isFinite(out[c][0]) || !Number.isFinite(this.w[c][0])) {
@@ -326,12 +334,24 @@ class EchoCut extends AudioWorkletProcessor {
         if (cap && cap.length) out[c].set(cap[Math.min(c, cap.length - 1)]);
       }
     }
+    const silent = (inp) => {
+      if (!inp || !inp.length) return true;
+      const a = inp[0];
+      for (let i = 0; i < a.length; i++) if (a[i] !== 0) return false;
+      return true;
+    };
+    const vSilent = silent(voice), cSilent = silent(cap);
+    if (vSilent && this.lastVoice > 1e-6) this.gapsVoice++;
+    if (cSilent && this.lastCap > 1e-6) this.gapsCap++;
+    this.lastVoice = vSilent ? 0 : Math.abs(voice[0][frames - 1]) + 1e-6;
+    this.lastCap = cSilent ? 0 : Math.abs(cap[0][frames - 1]) + 1e-6;
     if ((this.repN += frames) >= 48000) {
       this.port.postMessage({
         delay: this.delay,
         captured: this.repCap / this.repN,
         sent: this.repOut / this.repN,
         voice: this.repVoice / this.repN,
+        gaps: this.gapsVoice + this.gapsCap,
       });
       this.repCap = this.repOut = this.repVoice = this.repN = 0;
     }

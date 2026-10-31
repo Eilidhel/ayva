@@ -1295,14 +1295,8 @@ function closeMic(id) {
 // phone's voice as played here, and the phone would hear itself a moment
 // later. While a phone talks, the sound sent to viewers goes through
 // echo-cut.js, which subtracts that voice and leaves everything else.
-// The voice is then played from the same Web Audio graph the cleaner listens
-// to, not from its <audio> element: over Wi-Fi the received voice is
-// stretched now and then to ride out jitter, and the element and Web Audio
-// did that at different moments, so the copy to subtract no longer matched.
-// The element stays (muted): Chrome only feeds a remote track to Web Audio
-// while an element holds it.
 
-var echo = null; // { ctx, node, input, out, mix, play, voices: { id: { track, source } }, ready }
+var echo = null; // { ctx, node, input, out, mix, voices: { id: { track, source } }, ready }
 
 function outgoingAudio() {
   var input = stream && stream.getAudioTracks()[0];
@@ -1326,12 +1320,11 @@ function setOutgoingAudio() {
 function startEcho() {
   var input = stream && stream.getAudioTracks()[0];
   if (echo || !input || !window.AudioWorkletNode) return;
-  var ctx = new AudioContext({ sampleRate: 48000, latencyHint: 'interactive' });
+  // Large buffers: the cleaner must keep up on a busy computer (a game
+  // running); a missed deadline would gap the sound it compares.
+  var ctx = new AudioContext({ sampleRate: 48000, latencyHint: 'playback' });
   var e = echo = { ctx: ctx, input: input, voices: {}, ready: false };
   e.mix = ctx.createGain();
-  e.play = ctx.createGain();
-  e.play.connect(ctx.destination);
-  playOnContext(ctx);
   ctx.audioWorklet.addModule('/echo-cut.js').then(function () {
     return ctx.resume();
   }).then(function () {
@@ -1357,7 +1350,6 @@ function startEcho() {
     e.out = dest.stream.getAudioTracks()[0];
     e.ready = true;
     setOutgoingAudio();
-    Object.keys(e.voices).forEach(playThroughEcho);
   }).catch(function () {
     if (echo === e) stopEcho();
   });
@@ -1381,9 +1373,10 @@ function showEchoState(s) {
   // How much quieter the sound got only says something while the phone talks.
   var talking = s.voice > 1e-6 && s.captured > 1e-9;
   var db = talking ? Math.round(10 * Math.log10(s.captured / Math.max(s.sent, 1e-12))) : 0;
-  el.textContent = talking && db > 0
+  el.textContent = (talking && db > 0
     ? t('echoWorkingDb').replace('{ms}', ms).replace('{db}', db)
-    : t('echoWorking').replace('{ms}', ms);
+    : t('echoWorking').replace('{ms}', ms))
+    + (s.gaps ? ' ' + t('echoGaps').replace('{n}', s.gaps) : '');
 }
 
 // ---- Diagnostic recording ----
@@ -1439,18 +1432,7 @@ function stopEcho() {
   var e = echo;
   echo = null;
   setOutgoingAudio();
-  // Back to the plain elements for the voices still talking.
-  Object.keys(mics).forEach(function (id) { mics[id].audio.muted = false; });
   e.ctx.close().catch(function () {});
-}
-
-// Once the cleaner runs: the voice plays from its graph, the element goes quiet.
-function playThroughEcho(id) {
-  var v = echo && echo.voices[id];
-  if (!v || !echo.ready || v.playing) return;
-  v.source.connect(echo.play);
-  v.playing = true;
-  if (mics[id]) mics[id].audio.muted = true;
 }
 
 function echoAddVoice(id, track) {
@@ -1460,8 +1442,7 @@ function echoAddVoice(id, track) {
   echoRemoveVoice(id);
   var source = echo.ctx.createMediaStreamSource(new MediaStream([track]));
   source.connect(echo.mix);
-  echo.voices[id] = { track: track, source: source, playing: false };
-  playThroughEcho(id);
+  echo.voices[id] = { track: track, source: source };
 }
 
 // The cleaner stays on until sharing stops: switching the sound back and
@@ -1477,10 +1458,6 @@ var micOutput = storageGet('ayva-mic-output') || '';
 
 function playOn(audio) {
   if (audio.setSinkId) audio.setSinkId(micOutput).catch(function () { audio.setSinkId(''); });
-}
-
-function playOnContext(ctx) {
-  if (ctx.setSinkId) ctx.setSinkId(micOutput).catch(function () { ctx.setSinkId('').catch(function () {}); });
 }
 
 function listOutputs() {
@@ -1514,7 +1491,6 @@ if (window.ayva) {
     micOutput = this.value;
     storageSet('ayva-mic-output', micOutput);
     Object.keys(mics).forEach(function (id) { playOn(mics[id].audio); });
-    if (echo) playOnContext(echo.ctx);
   };
 }
 
