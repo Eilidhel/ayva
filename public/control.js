@@ -297,14 +297,14 @@ var Control = (function () {
 
   window.addEventListener('keydown', function (e) {
     if (!enabled || mode !== 'mouse' || e.isComposing) return;
-    if (e.target && e.target.tagName === 'INPUT') return;
+    if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return; // typing into the page
     e.preventDefault();
     send({ t: 'key', code: e.code, down: true });
   });
 
   window.addEventListener('keyup', function (e) {
     if (!enabled || mode !== 'mouse') return;
-    if (e.target && e.target.tagName === 'INPUT') return;
+    if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return; // typing into the page
     e.preventDefault();
     send({ t: 'key', code: e.code, down: false });
   });

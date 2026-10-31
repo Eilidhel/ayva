@@ -56,6 +56,8 @@ public class PlayerActivity extends Activity {
     private PermissionRequest pendingMic;
     private ValueCallback<Uri[]> pendingFiles;
     private SplitProxy proxy; // only for the fixed address
+    private MediaModeKeeper mediaMode;
+    private boolean micUsed; // the page has had the microphone
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
@@ -67,6 +69,7 @@ public class PlayerActivity extends Activity {
         origin = originOf(url);
         currentOrigin = origin;
 
+        mediaMode = new MediaModeKeeper(this);
         web = new WebView(this);
         web.setBackgroundColor(Color.BLACK);
         WebSettings s = web.getSettings();
@@ -195,6 +198,7 @@ public class PlayerActivity extends Activity {
                 if (Build.VERSION.SDK_INT < 23
                         || checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+                    micStarted();
                 } else {
                     pendingMic = request;
                     requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_MIC);
@@ -225,6 +229,7 @@ public class PlayerActivity extends Activity {
         if (requestCode != REQUEST_MIC || pendingMic == null) return;
         if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
             pendingMic.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+            micStarted();
         } else {
             pendingMic.deny();
         }
@@ -260,6 +265,23 @@ public class PlayerActivity extends Activity {
             return true;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    private void micStarted() {
+        micUsed = true;
+        mediaMode.start();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (micUsed) mediaMode.start();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mediaMode.stop();
     }
 
     @Override

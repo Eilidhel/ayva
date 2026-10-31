@@ -252,13 +252,19 @@ function updateComputerExtras(caps) {
   var select = $('screenSelect');
   var list = Array.isArray(caps.screens) ? caps.screens : [];
   select.innerHTML = '';
+  // Shown when the shared picture is not one of the screens (a single window).
+  var title = document.createElement('option');
+  title.value = '';
+  title.disabled = true;
+  title.textContent = t('pickScreen');
+  select.appendChild(title);
   list.forEach(function (s) {
     var o = document.createElement('option');
     o.value = String(s.id);
     o.textContent = String(s.name);
     select.appendChild(o);
   });
-  select.value = caps.screen || '';
+  select.value = list.some(function (s) { return String(s.id) === caps.screen; }) ? caps.screen : '';
   select.hidden = list.length < 2;
 }
 

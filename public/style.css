@@ -118,6 +118,8 @@ select {
   border-radius: 10px;
   padding: 12px;
 }
+/* The open list is drawn by the system; keep its text readable. */
+select option { background: var(--panel-2); color: var(--text); }
 
 .badge {
   display: inline-flex;
@@ -582,7 +584,8 @@ select {
   pointer-events: none; /* only the buttons themselves take clicks */
   transition: opacity 0.3s;
 }
-.controls button { pointer-events: auto; white-space: nowrap; }
+.controls button, .controls select { pointer-events: auto; white-space: nowrap; }
+.controls select { max-width: 60vw; }
 
 @media (max-width: 600px) {
   .controls {
@@ -592,11 +595,11 @@ select {
     justify-content: center;
     gap: 6px;
   }
-  .controls button { padding: 9px 12px; font-size: 0.85rem; }
+  .controls button, .controls select { padding: 9px 12px; font-size: 0.85rem; }
 }
 .idle .controls { opacity: 0; }
-.idle .controls button { pointer-events: none; }
-.app .controls button:not(#unmuteBtn) { display: none; }
+.idle .controls button, .idle .controls select { pointer-events: none; }
+.app .controls button:not(#unmuteBtn), .app .controls select { display: none; }
 .idle { cursor: none; }
 
 .spinner {
