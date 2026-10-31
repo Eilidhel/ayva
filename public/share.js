@@ -695,13 +695,33 @@ function startProof(msg, sig) {
   sig.send({ type: 'signal', to: msg.id, data: { kind: 'prove', nonce: nonce } });
 }
 
-function verifySignature(key, sig, nonce) {
+function verifySignature(key, sig, origin, nonce) {
   if (typeof key !== 'string' || typeof sig !== 'string' || !crypto.subtle) return Promise.resolve(false);
   var algo = { name: 'ECDSA', namedCurve: 'P-256' };
   return crypto.subtle.importKey('spki', fromBase64(key), algo, false, ['verify']).then(function (k) {
     return crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, k, fromBase64(sig),
-      new TextEncoder().encode('ayva-device-proof:' + nonce));
+      new TextEncoder().encode('ayva-device-proof:' + origin + ':' + nonce));
   }).catch(function () { return false; });
+}
+
+function originOf(url) {
+  try { return new URL(url).origin.toLowerCase(); } catch (e) { return null; }
+}
+
+// A proof names the address the device was looking at. Only this computer's
+// own addresses count: over the internet the fixed address or the current
+// internet link, at home this computer's own server. A proof signed for a
+// page anywhere else (a lookalike someone sent) is refused.
+function proofOriginOk(origin, remote) {
+  if (typeof origin !== 'string' || origin.length > 200) return false;
+  var o = origin.toLowerCase();
+  if (originOf(o) !== o) return false;
+  if (remote) {
+    return (!!cloudInfo && o === originOf(cloudInfo.url)) || (!!internet.url && o === originOf(internet.url));
+  }
+  var own = ((config && config.lanUrls) || []).map(originOf);
+  own.push(originOf(location.origin), originOf('http://127.0.0.1:' + location.port));
+  return own.indexOf(o) >= 0;
 }
 
 function checkProof(id, data) {
@@ -712,7 +732,17 @@ function checkProof(id, data) {
   // The key this device must show, if one is known for it.
   var expected = (entry && entry.key) || (typeof approvedThisRun[deviceId] === 'string' ? approvedThisRun[deviceId] : null);
   var hasKey = typeof data.key === 'string' && data.key.length < 400;
-  var check = hasKey ? verifySignature(data.key, data.sig, p.nonce) : Promise.resolve(false);
+  // A page from before proofs named their address (open since Ayva was
+  // updated): refused, but it only needs reloading, so no alarm.
+  if (hasKey && data.origin === undefined) {
+    clearTimeout(p.timer);
+    delete proving[id];
+    transferStatus(t('proofOutdated').replace('{who}', deviceLabel(p.msg)));
+    p.sig.send({ type: 'kick', id: id });
+    return;
+  }
+  var check = hasKey && proofOriginOk(data.origin, !!p.msg.remote)
+    ? verifySignature(data.key, data.sig, data.origin, p.nonce) : Promise.resolve(false);
   check.then(function (valid) {
     if (proving[id] !== p) return;
     if (expected ? !(valid && data.key === expected) : hasKey && !valid) {

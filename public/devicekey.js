@@ -90,16 +90,22 @@ var DeviceKey = (function () {
     return pairPromise;
   }
 
-  // Signs the computer's one-time challenge. Resolves { key, sig } (both
-  // base64: SPKI public key, raw P-256 signature) or null when this device
-  // has no safe place for a key.
+  // Signs the computer's one-time challenge together with this page's address,
+  // so the signature only counts at the computer's own addresses. Resolves
+  // { key, sig, origin } (key: base64 SPKI, sig: base64 raw P-256) or null when
+  // this device has no safe place for a key.
   function prove(nonce) {
-    var message = PREFIX + nonce;
+    var origin = location.origin;
+    var message = PREFIX + origin + ':' + nonce;
     if (native) {
       try {
+        // The app fills in the address itself (signProof); older apps only
+        // have sign(), which signs what the page gives it.
+        var der = native.signProof ? native.signProof(nonce) : native.sign(message);
         return Promise.resolve({
           key: native.publicKey(),
-          sig: toBase64(derToRaw(fromBase64(native.sign(message)))),
+          sig: toBase64(derToRaw(fromBase64(der))),
+          origin: origin,
         });
       } catch (e) {
         return Promise.resolve(null);
@@ -112,7 +118,7 @@ var DeviceKey = (function () {
         subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, pair.privateKey, new TextEncoder().encode(message)),
       ]);
     }).then(function (parts) {
-      return { key: toBase64(parts[0]), sig: toBase64(parts[1]) };
+      return { key: toBase64(parts[0]), sig: toBase64(parts[1]), origin: origin };
     }).catch(function () { return null; });
   }
 

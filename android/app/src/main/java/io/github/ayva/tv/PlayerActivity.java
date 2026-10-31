@@ -104,7 +104,8 @@ public class PlayerActivity extends Activity {
         });
         web.setWebChromeClient(new Chrome());
         if (DeviceKey.supported()) {
-            web.addJavascriptInterface(new DeviceKey(() -> origin != null && origin.equals(currentOrigin)), "AyvaKey");
+            web.addJavascriptInterface(new DeviceKey(
+                    () -> origin != null && origin.equals(currentOrigin) ? origin : null), "AyvaKey");
         }
         web.addJavascriptInterface(new FileSaver(this), "AyvaFiles");
         FrameLayout root = new FrameLayout(this);

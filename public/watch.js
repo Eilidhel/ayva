@@ -180,7 +180,10 @@ var pinSalt = null; // set while the computer wants a PIN
 function proveDevice(nonce) {
   proofNonce = String(nonce || '');
   DeviceKey.prove(proofNonce).then(function (proof) {
-    signal.send({ type: 'signal', data: proof ? { kind: 'proof', key: proof.key, sig: proof.sig } : { kind: 'proof' } });
+    signal.send({
+      type: 'signal',
+      data: proof ? { kind: 'proof', key: proof.key, sig: proof.sig, origin: proof.origin } : { kind: 'proof' },
+    });
   });
 }
 

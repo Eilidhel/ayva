@@ -20,20 +20,26 @@ import java.security.spec.ECGenParameterSpec;
  * used by public/devicekey.js). The private key lives in the Android Keystore
  * and can never be read out, not even by this app; it only signs the
  * computer's one-time challenges, and only for the page this app opened.
+ *
+ * Every signature names the address the app is showing, filled in here and
+ * not by the page. A page somewhere else (a link someone sent) can still ask
+ * for a signature, but it names that other address, which the computer
+ * refuses, so it cannot be used to pose as this device.
  */
 class DeviceKey {
 
     private static final String ALIAS = "ayva-device";
     private static final String PREFIX = "ayva-device-proof:";
 
-    interface OriginCheck {
-        boolean allowed();
+    interface OriginSource {
+        /** The address of the page this app opened, or null if it has left it. */
+        String origin();
     }
 
-    private final OriginCheck originCheck;
+    private final OriginSource originSource;
 
-    DeviceKey(OriginCheck originCheck) {
-        this.originCheck = originCheck;
+    DeviceKey(OriginSource originSource) {
+        this.originSource = originSource;
     }
 
     static boolean supported() {
@@ -57,17 +63,23 @@ class DeviceKey {
     /** Base64 SPKI public key. */
     @JavascriptInterface
     public String publicKey() throws Exception {
-        if (!originCheck.allowed()) throw new SecurityException("origin");
+        if (originSource.origin() == null) throw new SecurityException("origin");
         PublicKey key = store().getCertificate(ALIAS).getPublicKey();
         return Base64.encodeToString(key.getEncoded(), Base64.NO_WRAP);
     }
 
-    /** Base64 DER ECDSA signature; only for Ayva challenges. */
+    /** Base64 DER ECDSA signature of "ayva-device-proof:<origin>:<nonce>". */
     @JavascriptInterface
-    public String sign(String message) throws Exception {
-        if (!originCheck.allowed() || message == null || !message.startsWith(PREFIX)) {
+    public String signProof(String nonce) throws Exception {
+        String origin = originSource.origin();
+        if (origin == null || nonce == null || !nonce.matches("[0-9a-f]{16,128}")) {
             throw new SecurityException("refused");
         }
+        // Lower case, as browsers write it (location.origin).
+        return sign(PREFIX + origin.toLowerCase(java.util.Locale.ROOT) + ":" + nonce);
+    }
+
+    private String sign(String message) throws Exception {
         Signature sig = Signature.getInstance("SHA256withECDSA");
         sig.initSign((PrivateKey) store().getKey(ALIAS, null));
         sig.update(message.getBytes(StandardCharsets.UTF_8));
