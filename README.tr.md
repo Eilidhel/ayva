@@ -234,7 +234,7 @@ Pencereyi kapatınca Ayva saat yanındaki simgede çalışmaya devam eder, TV'le
 Kurulu program açılışta ve birkaç saatte bir GitHub Releases'te yeni sürüm olup olmadığına bakar, varsa arka planda indirir.
 Yeniden başlatmak süren paylaşımı keseceği için Ayva kendi kendine kurmaz: uygun olduğunda bildirime ya da **Ayarlar**'daki (veya simge menüsündeki) **Yeniden başlat ve güncelle**'ye tıkla. Aynı satır kurulu sürümü de gösterir; oradaki **Güncellemeleri denetle** hemen kontrol eder.
 
-Android uygulaması (0.8.1 ve sonrası) da açılışta GitHub Releases'e bakar. Yeni sürüm varsa açılış ekranının en üstünde **⬆ Ayva x.y.z sürümüne güncelle** şeridi görünür; dokununca indirir ve Android'in kendi kurulum sorusunu açar. İlk seferde Android, Ayva'nın uygulama kurmasına izin vermeni ister. Listenin altındaki sürüm satırı hemen denetler. 0.8.0'dan 0.8.1'e geçiş bir kez elle yapılır.
+Android uygulaması (0.8.1 ve sonrası) da açılışta GitHub Releases'e bakar. Yeni sürüm varsa açılış ekranının en üstünde **⬆ Ayva x.y.z sürümüne güncelle** şeridi görünür; dokununca indirir ve Android'in kendi kurulum sorusunu açar. İlk seferde Android, Ayva'nın uygulama kurmasına izin vermeni ister. Açılış ekranındaki **⚙** Ayarlar'ı açar: oradaki **Güncellemeleri denetle** hemen denetler, **Renkler** uygulamanın renk temasını seçer (izleme sayfası da ona uyar), **Pil ve izinler** Ayva'nın Android ayarlarını açar. 0.8.0'dan 0.8.1'e geçiş bir kez elle yapılır.
 
 ## Sadece tarayıcı (kurulumsuz)
 

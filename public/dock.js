@@ -62,5 +62,7 @@
 
   // ---- Colour themes ----
 
-  AyvaTheme.picker($('themes'));
+  // In the Android app the colours are chosen in its Settings.
+  if (AyvaTheme.fixed) $('themes').parentNode.hidden = true;
+  else AyvaTheme.picker($('themes'));
 })();

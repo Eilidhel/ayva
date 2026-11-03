@@ -19,10 +19,7 @@
     <string name="update_downloading">Güncelleme indiriliyor… %%%1$d</string>
     <string name="update_installing">Güncelleme kuruluyor…</string>
     <string name="update_failed">Güncelleme kurulamadı. Daha sonra yeniden dene.</string>
-    <string name="version_check">Ayva %1$s · Güncellemeleri denetle</string>
-    <string name="version_checking">Ayva %1$s · Denetleniyor…</string>
     <string name="version_latest">Ayva %1$s · Güncel</string>
-    <string name="version_check_failed">Ayva %1$s · Güncelleme denetlenemedi</string>
     <string name="scan_qr">📷  QR kodu tara</string>
     <string name="scan_hint">Kamerayı bilgisayardaki Ayva\'da görünen QR koda tut.</string>
     <string name="scan_not_ayva">Bu QR kod bir Ayva linki değil.</string>
@@ -44,4 +41,24 @@
     <string name="fixed_address">Sabit adres</string>
     <string name="tile_scan">QR kodu tara</string>
     <string name="tile_address">Sabit adres ekle</string>
+    <string name="settings_title">Ayarlar</string>
+    <string name="settings_back">‹  Ayarlar</string>
+    <string name="settings_updates">Güncellemeler</string>
+    <string name="settings_version">Ayva %1$s</string>
+    <string name="settings_check">Güncellemeleri denetle</string>
+    <string name="settings_checking">Denetleniyor…</string>
+    <string name="settings_latest">Güncel</string>
+    <string name="settings_failed">Denetlenemedi</string>
+    <string name="settings_app">Uygulama</string>
+    <string name="settings_app_info">Pil ve izinler</string>
+    <string name="settings_app_info_hint">Ekranını gösterirken pil kullanımını Sınırsız yap</string>
+    <string name="settings_about">Hakkında</string>
+    <string name="settings_github">Ayva GitHub\'da</string>
+    <string name="settings_theme">Renkler</string>
+    <string name="theme_quince">Ayva</string>
+    <string name="theme_sea">Deniz</string>
+    <string name="theme_leaf">Yaprak</string>
+    <string name="theme_plum">Erik</string>
+    <string name="theme_rose">Gül</string>
+    <string name="theme_light">Açık</string>
 </resources>

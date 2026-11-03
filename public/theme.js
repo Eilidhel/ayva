@@ -1,12 +1,18 @@
-// The colour theme, picked on the watch page (dock.js) or in the computer's
-// settings (sharenav.js). Loaded in <head> so
-// the page is drawn in its colours from the start, without a flash of the
+// The colour theme, picked on the watch page (dock.js), in the computer's
+// settings (sharenav.js) or in the Android app's Settings. Loaded in <head>
+// so the page is drawn in its colours from the start, without a flash of the
 // default ones. Kept per device, in this browser or app.
 var AyvaTheme = (function () {
   var KEY = 'ayva-theme';
   var NAMES = ['quince', 'sea', 'leaf', 'plum', 'rose', 'light'];
 
+  // The Android app picks the theme in its own Settings and passes it here
+  // (?theme=); the page then follows the app and offers no picker of its own.
+  var fromApp = (/[?&]theme=([a-z]+)/.exec(location.search) || [])[1];
+  var fixed = NAMES.indexOf(fromApp) >= 0;
+
   function get() {
+    if (fixed) return fromApp;
     try {
       var v = localStorage.getItem(KEY);
       return NAMES.indexOf(v) > 0 ? v : 'quince';
@@ -62,5 +68,5 @@ var AyvaTheme = (function () {
   }
 
   apply(get());
-  return { names: NAMES, get: get, set: set, picker: picker };
+  return { names: NAMES, get: get, set: set, picker: picker, fixed: fixed };
 })();

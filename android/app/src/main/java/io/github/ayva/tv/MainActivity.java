@@ -41,22 +41,26 @@ import java.util.List;
  * Start screen: lists the computers found on the network. Connects by itself
  * to the computer used last time, or to the only one found. On phones it also
  * keeps fixed addresses (https://ayva.<name>.workers.dev) for use away from home.
- * A newer app from GitHub Releases is offered at the top of the list.
+ * A newer app from GitHub Releases is offered at the top of the list; the
+ * ⚙ button opens Settings (version and update check, the app's battery and
+ * permission settings, the project's page) on the same screen.
  */
 public class MainActivity extends Activity implements Discovery.Listener, Updater.Listener {
 
-    // Quince colours, same as the web pages (public/style.css).
-    private static final int BG = 0xFF16130E;
-    private static final int CARD = 0xFF201C15;
-    private static final int PANEL = 0xFF2C271D;
-    private static final int PANEL_3 = 0xFF3A3326;
-    private static final int TEXT = 0xFFF4EFE4;
-    private static final int ACCENT = 0xFFF2C14E;
-    private static final int ON_ACCENT = 0xFF2A1D05;
-    private static final int MUTED = 0xFFA89F8C;
-    private static final int FAINT = 0xFF6F6552;
+    // The colour themes of the web pages (public/style.css), picked in Settings:
+    // name, then background, card, panel, panel 3, text, muted, faint, accent,
+    // accent pressed, text on the accent, a computer that shares.
+    static final String[] THEMES = {"quince", "sea", "leaf", "plum", "rose", "light"};
+    private static final int[][] PALETTES = {
+        {0xFF16130E, 0xFF201C15, 0xFF2C271D, 0xFF3A3326, 0xFFF4EFE4, 0xFFA89F8C, 0xFF6F6552, 0xFFF2C14E, 0xFFE0A92A, 0xFF2A1D05, 0xFF2A1A17},
+        {0xFF0F1419, 0xFF161D24, 0xFF1F2932, 0xFF2A3743, 0xFFEAF1F7, 0xFF93A3B1, 0xFF5D6B78, 0xFF5CB3F0, 0xFF3D9AE0, 0xFF04223A, 0xFF2A171A},
+        {0xFF10150F, 0xFF171E16, 0xFF212A1F, 0xFF2C382A, 0xFFECF3E8, 0xFF9CAB95, 0xFF66735F, 0xFF8FD17C, 0xFF72BD5E, 0xFF0F2A07, 0xFF2A1717},
+        {0xFF15111A, 0xFF1D1724, 0xFF282031, 0xFF352B40, 0xFFF1ECF6, 0xFFA99DB6, 0xFF6E6379, 0xFFC49AF2, 0xFFAD7EE8, 0xFF2A0F45, 0xFF2A1720},
+        {0xFF1A1112, 0xFF23181A, 0xFF2F2123, 0xFF3D2B2E, 0xFFF7ECEC, 0xFFB59C9E, 0xFF7A6365, 0xFFF29A8A, 0xFFE77D6A, 0xFF3D0D06, 0xFF301616},
+        {0xFFF7F3EA, 0xFFFFFFFF, 0xFFECE5D6, 0xFFE0D6C2, 0xFF2A2215, 0xFF6F6552, 0xFF9A8F7A, 0xFFE0A92A, 0xFFC8901A, 0xFF2A1D05, 0xFFFDE8E6},
+    };
+    private static int BG, CARD, PANEL, PANEL_3, TEXT, MUTED, FAINT, ACCENT, ACCENT_2, ON_ACCENT, LIVE_BG;
     private static final int LIVE = 0xFFE5484D;
-    private static final int LIVE_BG = 0xFF2A1A17;
     private static final int OK = 0xFF7CC46E;
     private static final long AUTO_CONNECT_WINDOW_MS = 4000;
     private static final int SCAN = 1;
@@ -66,6 +70,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
     private LinearLayout list;
     private TextView title;
     private TextView help;
+    private boolean settingsOpen;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private long startedAt;
     private boolean autoConnect = true;
@@ -75,11 +80,76 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        settingsOpen = savedInstanceState != null && savedInstanceState.getBoolean("settings");
+        useTheme(theme());
         setContentView(buildLayout());
         discovery = new Discovery(this, this);
         updater = new Updater(this, this);
         render();
         handleLink(getIntent());
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle out) {
+        super.onSaveInstanceState(out);
+        out.putBoolean("settings", settingsOpen);
+    }
+
+    // ---- Colour theme ----
+
+    private String theme() {
+        String t = prefs().getString("theme", "quince");
+        for (String name : THEMES) if (name.equals(t)) return t;
+        return "quince";
+    }
+
+    private static void useTheme(String name) {
+        int[] p = PALETTES[0];
+        for (int i = 0; i < THEMES.length; i++) if (THEMES[i].equals(name)) p = PALETTES[i];
+        BG = p[0]; CARD = p[1]; PANEL = p[2]; PANEL_3 = p[3]; TEXT = p[4]; MUTED = p[5];
+        FAINT = p[6]; ACCENT = p[7]; ACCENT_2 = p[8]; ON_ACCENT = p[9]; LIVE_BG = p[10];
+    }
+
+    // Saved, then the screen is drawn again in the new colours.
+    private void pickTheme(String name) {
+        prefs().edit().putString("theme", name).apply();
+        recreate();
+    }
+
+    // A row of colour dots; the one in use has a ring.
+    private View themeRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(4), dp(4), dp(4), dp(8));
+        String now = theme();
+        int[] names = {R.string.theme_quince, R.string.theme_sea, R.string.theme_leaf,
+                R.string.theme_plum, R.string.theme_rose, R.string.theme_light};
+        for (int i = 0; i < THEMES.length; i++) {
+            final String name = THEMES[i];
+            View dot = new View(this);
+            GradientDrawable fill = new GradientDrawable();
+            fill.setShape(GradientDrawable.OVAL);
+            fill.setColor(i == THEMES.length - 1 ? PALETTES[i][0] : PALETTES[i][7]);
+            fill.setStroke(dp(name.equals(now) ? 3 : 1), name.equals(now) ? TEXT : PANEL_3);
+            GradientDrawable focus = new GradientDrawable();
+            focus.setShape(GradientDrawable.OVAL);
+            focus.setColor(i == THEMES.length - 1 ? PALETTES[i][0] : PALETTES[i][7]);
+            focus.setStroke(dp(3), ACCENT);
+            StateListDrawable d = new StateListDrawable();
+            d.addState(new int[]{android.R.attr.state_focused}, focus);
+            d.addState(new int[]{}, fill);
+            dot.setBackground(d);
+            dot.setFocusable(true);
+            dot.setClickable(true);
+            dot.setContentDescription(getString(names[i]));
+            dot.setTag("theme-" + name);
+            dot.setOnClickListener(v -> pickTheme(name));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(38), dp(38));
+            lp.rightMargin = dp(12);
+            row.addView(dot, lp);
+        }
+        return row;
     }
 
     @Override
@@ -111,8 +181,8 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         title.setText(hosts.isEmpty() ? R.string.searching : R.string.found);
         if (!hosts.isEmpty()) help.setText(isTv() ? R.string.help : R.string.help_phone);
 
-        // With an update waiting, stay here so the update button can be seen.
-        if (autoConnect && updater.state() != Updater.State.AVAILABLE && maybeAutoConnect(hosts)) return;
+        // With an update waiting or Settings open, stay here.
+        if (autoConnect && !settingsOpen && updater.state() != Updater.State.AVAILABLE && maybeAutoConnect(hosts)) return;
         render();
     }
 
@@ -121,6 +191,12 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         if (focused != null && focused.getTag() instanceof String) focusedKey = (String) focused.getTag();
 
         list.removeAllViews();
+        title.setVisibility(settingsOpen ? View.GONE : View.VISIBLE);
+        help.setVisibility(settingsOpen ? View.GONE : View.VISIBLE);
+        if (settingsOpen) {
+            renderSettings();
+            return;
+        }
         View toFocus = addUpdateButton();
         boolean phone = !isTv();
         if (!lastHosts.isEmpty() || (phone && !addresses().isEmpty())) list.addView(section(R.string.section_computers));
@@ -132,7 +208,6 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
             if (toFocus == null) toFocus = card;
         }
         if (phone) addAddressButtons();
-        list.addView(versionButton());
         View same = list.findViewWithTag(focusedKey);
         if (same != null) toFocus = same;
         if (toFocus != null) toFocus.requestFocus();
@@ -181,7 +256,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
 
     // app=1 is the TV layout (made for the remote); phones get the touch page.
     private String pageQuery() {
-        return (isTv() ? "app=1&" : "") + "name=" + Uri.encode(deviceName());
+        return (isTv() ? "app=1&" : "") + "theme=" + theme() + "&name=" + Uri.encode(deviceName());
     }
 
     private boolean isTv() {
@@ -235,35 +310,57 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         return b;
     }
 
-    private Button versionButton() {
-        String v = updater.installedVersion();
-        int label;
+    // ---- Settings ----
+
+    private void openSettings(boolean open) {
+        settingsOpen = open;
+        focusedKey = open ? "back" : "settings";
+        render();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (settingsOpen) openSettings(false);
+        else super.onBackPressed();
+    }
+
+    private void renderSettings() {
+        Button back = strip(getString(R.string.settings_back), v -> openSettings(false));
+        back.setTag("back");
+        list.addView(back);
+
+        list.addView(section(R.string.settings_updates));
+        addUpdateButton();
+        int state;
+        int dot = MUTED;
         switch (updater.state()) {
-            case CHECKING: label = R.string.version_checking; break;
-            case UP_TO_DATE: label = R.string.version_latest; break;
-            case FAILED: label = R.string.version_check_failed; break;
-            default: label = R.string.version_check;
+            case CHECKING: state = R.string.settings_checking; break;
+            case UP_TO_DATE: state = R.string.settings_latest; dot = OK; break;
+            case FAILED: state = R.string.settings_failed; dot = LIVE; break;
+            default: state = R.string.settings_check;
         }
-        Button b = new Button(this);
-        b.setAllCaps(false);
-        b.setText(getString(label, v));
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        b.setTextColor(new ColorStateList(
-                new int[][]{{android.R.attr.state_focused}, {android.R.attr.state_pressed}, {}},
-                new int[]{TEXT, TEXT, FAINT}));
-        b.setBackground(states(Color.TRANSPARENT, Color.TRANSPARENT, Color.TRANSPARENT, 999));
-        b.setPadding(dp(16), dp(8), dp(16), dp(8));
-        b.setOnClickListener(x -> {
-            checkAsked = true;
-            updater.check(true);
-        });
-        b.setTag("version");
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.gravity = Gravity.CENTER_HORIZONTAL;
-        lp.topMargin = dp(18);
-        b.setLayoutParams(lp);
-        return b;
+        View version = card("⬆", getString(R.string.settings_version, updater.installedVersion()),
+                getString(state), dot, false, v -> {
+                    checkAsked = true;
+                    updater.check(true);
+                });
+        version.setTag("version");
+        list.addView(version);
+
+        list.addView(section(R.string.settings_theme));
+        list.addView(themeRow());
+
+        list.addView(section(R.string.settings_app));
+        list.addView(card("🔋", getString(R.string.settings_app_info), getString(R.string.settings_app_info_hint),
+                ACCENT, false, v -> startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", getPackageName(), null)))));
+        if (!isTv()) {
+            list.addView(section(R.string.settings_about));
+            list.addView(card("ℹ", getString(R.string.settings_github), "github.com/Eilidhel/ayva", MUTED, false,
+                    v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Eilidhel/ayva")))));
+        }
+        View same = list.findViewWithTag(focusedKey);
+        (same != null ? same : back).requestFocus();
     }
 
     // ---- Fixed addresses (phones) ----
@@ -387,6 +484,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         int side = isTv() ? dp(48) : dp(20);
         root.setPadding(side, dp(40), side, dp(24));
 
+        int width = Math.min(dp(520), getResources().getDisplayMetrics().widthPixels - 2 * side);
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
         ImageView logo = new ImageView(this);
@@ -395,8 +493,17 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         TextView name = text(getString(R.string.app_name), 28, TEXT);
         name.setTypeface(Typeface.DEFAULT_BOLD);
         name.setPadding(dp(12), 0, 0, 0);
-        header.addView(name);
-        root.addView(header);
+        header.addView(name, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        TextView gear = text("⚙", 22, MUTED);
+        gear.setGravity(Gravity.CENTER);
+        gear.setBackground(states(CARD, CARD, PANEL, 14));
+        gear.setFocusable(true);
+        gear.setClickable(true);
+        gear.setContentDescription(getString(R.string.settings_title));
+        gear.setTag("settings");
+        gear.setOnClickListener(v -> openSettings(!settingsOpen));
+        header.addView(gear, new LinearLayout.LayoutParams(dp(46), dp(46)));
+        root.addView(header, new LinearLayout.LayoutParams(width, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         title = text(getString(R.string.searching), 17, TEXT);
         title.setTypeface(Typeface.DEFAULT_BOLD);
@@ -413,7 +520,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list);
-        int width = Math.min(dp(520), getResources().getDisplayMetrics().widthPixels - 2 * side);
+        list.setPadding(0, dp(8), 0, 0);
         root.addView(scroll, new LinearLayout.LayoutParams(width, LinearLayout.LayoutParams.WRAP_CONTENT));
         return root;
     }
@@ -462,7 +569,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         c.addView(words, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
 
         if (live) {
-            TextView pill = text(getString(R.string.live), 11, Color.WHITE);
+            TextView pill = text(getString(R.string.live), 11, Color.WHITE); // white on red in every theme
             pill.setTypeface(Typeface.DEFAULT_BOLD);
             pill.setPadding(dp(9), dp(3), dp(9), dp(3));
             pill.setBackground(rounded(LIVE, 999));
@@ -486,7 +593,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         t.setGravity(Gravity.CENTER);
         t.setPadding(dp(8), dp(18), dp(8), dp(16));
         int bg = main ? ACCENT : CARD;
-        t.setBackground(states(bg, main ? 0xFFE0A92A : PANEL, main ? ACCENT : PANEL, 18));
+        t.setBackground(states(bg, main ? ACCENT_2 : PANEL, main ? ACCENT : PANEL, 18));
         t.setFocusable(true);
         t.setClickable(true);
         t.setOnClickListener(onClick);
@@ -516,8 +623,8 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         StateListDrawable bg = new StateListDrawable();
         bg.addState(new int[]{android.R.attr.state_focused}, rounded(ACCENT, 14));
         bg.addState(new int[]{android.R.attr.state_pressed}, rounded(ACCENT, 14));
-        GradientDrawable idle = rounded(0x1FF2C14E, 14);
-        idle.setStroke(dp(1), 0x99F2C14E);
+        GradientDrawable idle = rounded((ACCENT & 0x00FFFFFF) | 0x1F000000, 14);
+        idle.setStroke(dp(1), (ACCENT & 0x00FFFFFF) | 0x99000000);
         bg.addState(new int[]{}, idle);
         b.setBackground(bg);
         b.setOnClickListener(onClick);
