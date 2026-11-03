@@ -39,15 +39,20 @@ Bilgisayarda Ayva'yı aç ve **Paylaşımı başlat**a bas. TV uygulaması bilgi
 3. **TV:** TV'de Ayva'yı aç. **Evdeki telefon:** "TV'de şunu aç" altındaki adresi aç. **Dışarıdaki telefon:** aşağıdaki bölüme bak.
 4. Bir cihaz ilk kez bağlandığında bilgisayar **İzin ver / Reddet** diye sorar. **Bu cihazı hatırla** işaretliyse bir dahaki sefere sormaz.
 
+Ayva penceresinin bölümleri soldadır: **Paylaş**, **İzle** (bir telefonun ekranı ya da kamerası burada), **Cihazlar**, **Uzaktan erişim**, **Geçmiş** ve **Ayarlar**. Logonun altındaki **‹** onları yalnızca simgelere daraltır. Sağ alt köşedeki tutamak pencereyi büyütür ya da küçültür; **Ayarlar → Renkler** altı renk temasından birini seçer (telefonda aynısı **Daha** altında).
+
+Kod ve bu bilgisayarın adresleri Ayva açıldığı andan itibaren **Göster**'e basana kadar **bulanıktır**, böylece kimse ekranından okuyamaz; paylaşım her başladığında ya da durduğunda yeniden bulanıklaşır.
+
 Paylaşım sırasında:
 
 - **Ekranı değiştir**, kimsenin bağlantısını koparmadan paylaşılan ekranı ya da pencereyi değiştirir.
-- Kod, linkler ve QR kod **bulanık** görünür (görmek için **Göster**). Ayva penceresinin kendisi de **yayına girmez**.
+- Ayva penceresinin kendisi **yayına girmez**; **Uzaktan erişim** altındaki linkler de bulanık görünür (kendi **Göster** butonuyla).
+- **Dosya gönder**, **Panoyu gönder** ve **Gizlilik modu** paylaşım butonlarının yanındaki **⋯** butonunun altındadır.
 - **Bağlı cihazlar** bölümü kimlerin izlediğini gösterir. Her cihazın yanında **Bağlantıyı kes** butonu var. Hatırlanan cihazları da oradan unutabilirsin.
 
 ## Her yerden izleme
 
-Ayva'da **İnternetten erişimi aç**'a bas. İlk seferde Cloudflare'in ücretsiz tünel aracı `cloudflared` indirilir (~60 MB, Cloudflare'in GitHub sayfasından).
+Ayva'da **Uzaktan erişim** altındaki **İnternetten erişimi aç**'a bas. İlk seferde Cloudflare'in ücretsiz tünel aracı `cloudflared` indirilir (~60 MB, Cloudflare'in GitHub sayfasından).
 Ardından Ayva bir `https://….trycloudflare.com` linki ve **QR kod** gösterir. Telefonla mobil veride ya da herhangi bir Wi-Fi'de okut.
 
 - Link uzun, rastgele bir **erişim anahtarı** içerir. İnternet üzerinden 6 haneli kod tek başına yetmez.
@@ -61,7 +66,7 @@ Cloudflare bu hızlı tünelleri ücretsiz ama test amaçlı sunuyor. Kesintisiz
 
 ## Sabit adres (Cloudflare, ücretsiz)
 
-Ayva'da **Sabit adres kur (Cloudflare)**'a bas ve penceredeki adımları izle: ücretsiz bir Cloudflare hesabında "Edit Cloudflare Workers" şablonuyla bir API anahtarı oluşturup Ayva'ya yapıştır, bir izleme şifresi belirle. Ayva kendini hesabına yükler ve `https://ayva.<adın>.workers.dev` gibi **hiç değişmeyen** bir link ve QR kod verir. Telefon bir kez şifre girer, sonra her seferinde aynı linkten bağlanır.
+Ayva'da **Uzaktan erişim** altındaki **Sabit adres kur (Cloudflare)**'a bas ve penceredeki adımları izle: ücretsiz bir Cloudflare hesabında "Edit Cloudflare Workers" şablonuyla bir API anahtarı oluşturup Ayva'ya yapıştır, bir izleme şifresi belirle. Ayva kendini hesabına yükler ve `https://ayva.<adın>.workers.dev` gibi **hiç değişmeyen** bir link ve QR kod verir. Telefon bir kez şifre girer, sonra her seferinde aynı linkten bağlanır.
 
 **Telefon "Sunucuya bağlanılıyor"da kalıyorsa:** bazı internet sağlayıcıları `workers.dev` adreslerini engelliyor. Chrome'da **⋮ → Ayarlar → Gizlilik ve güvenlik → Güvenli DNS kullan → Başka bir sağlayıcı seçin → Cloudflare (1.1.1.1)** seç ve sayfayı yeniden aç. (Ayva programı bunu bilgisayarda kendisi yapıyor.) Android uygulamasında ayar gerekmez: böyle ağlarda bağlantının ilk mesajını iki parça hâlinde gönderir, böylece filtre adresi okuyamaz; şifrelemeye dokunulmaz.
 
@@ -95,7 +100,7 @@ Yedek yol sabit adresten ayrıdır. Hem sabit adresle hem internet linkiyle çal
 1. [dash.cloudflare.com](https://dash.cloudflare.com) adresinde oturum aç (ya da ücretsiz hesap aç).
 2. Menüde **Realtime**'ı (bazı hesaplarda **Calls**), ardından **TURN Server**'ı aç ve **Create**'e (ya da **Create TURN Key**'e) bas. İsim olarak herhangi bir şey yazabilirsin, ör. `ayva`.
 3. Cloudflare iki değer gösterir: **Turn Token ID** ve **API Token**. API Token **sadece bir kez** gösterilir, sayfayı kapatma.
-4. Ayva'da kodun altındaki **Yedek yol (Cloudflare TURN)** bölümünü aç, iki değeri yapıştır ve **Aç**'a bas. Ayva bunları saklamadan önce Cloudflare'de kontrol eder.
+4. Ayva'da **Uzaktan erişim** altındaki **Yedek yol (Cloudflare TURN)** bölümünü aç, iki değeri yapıştır ve **Aç**'a bas. Ayva bunları saklamadan önce Cloudflare'de kontrol eder.
 
 Kapatmak için Ayva'da **Yedek yolu kapat**'a bas. Anahtarı her yerde geçersiz kılmak için Cloudflare panelinden de sil.
 
@@ -136,7 +141,7 @@ Windows, yönetici olarak çalışan pencerelerin (ör. Görev Yöneticisi) kont
 
 ## Telefondan ya da TV'den başlatma
 
-Programdaki **Hatırlanan cihazlar** listesinde her cihazın yanında iki kutu var, ikisi de varsayılan olarak kapalı:
+Programın **Cihazlar** bölümünde **İzinler ve PIN** her hatırlanan cihazın anahtarlarını açar, hepsi varsayılan olarak kapalıdır. İkisi bu bilgisayarda geçerlidir:
 
 - **Paylaşımı başlatabilir:** cihaz beklerken **Paylaşımı başlat**, izlerken **Paylaşımı durdur** butonunu görür. Bilgisayarın ana ekranı paylaşılır (seçicide işareti kaldırmadıysan sesiyle birlikte) ve bilgisayar her seferinde bildirim gösterir.
 - **Kontrol edebilir:** paylaşım sırasında cihaz, sen **Kontrolü aç**'a basmadan fareyi ve klavyeyi kullanabilir (dosya da gönderebilir). Diğer cihazlar yalnızca izler. **Ctrl+Alt+K** bunu paylaşım yeniden başlayana kadar durdurur.
@@ -151,9 +156,9 @@ Bu kutular yalnızca izin verirken hatırladığın cihazlarda çıkar; bir kere
 
 Her imza, cihazın o an baktığı adresi de içerir ve bilgisayar sadece kendi adreslerini kabul eder: ev ağındaki adresi, sabit adres ya da o anki internet linki. Android uygulamasında adresi sayfa değil uygulamanın kendisi ekler. Böylece başka bir yerdeki benzer bir sayfa (ör. birinin gönderdiği, Ayva uygulamasında başka bir `workers.dev` sayfası açan link ya da QR kod) bilgisayarında geçerli olacak bir imza alamaz. Güncellemeden önce açık kalmış bir sayfanın bağlantısı bir kez kesilir; sayfayı yenilemek yeterlidir.
 
-**PIN.** **Hatırlanan cihazlar** listesinde **PIN** ile bir cihaza 4–8 haneli bir PIN koyabilirsin. O cihaz her bağlantıda, paylaşımı başlatmadan ya da kontrol etmeden önce PIN'i girer. Böylece kilidi açık bir telefon çalınsa bile yetmez. PIN bilgisayarda yalnızca tuzlanmış bir özet olarak saklanır, cihaz o bağlantıya özel bir özet gönderir. 5 yanlış denemede cihazın hakları 15 dakika kilitlenir ve bilgisayar sana haber verir.
+**PIN.** **Cihazlar** bölümünde **İzinler ve PIN → PIN** ile bir cihaza 4–8 haneli bir PIN koyabilirsin. O cihaz her bağlantıda, paylaşımı başlatmadan ya da kontrol etmeden önce PIN'i girer. Böylece kilidi açık bir telefon çalınsa bile yetmez. PIN bilgisayarda yalnızca tuzlanmış bir özet olarak saklanır, cihaz o bağlantıya özel bir özet gönderir. 5 yanlış denemede cihazın hakları 15 dakika kilitlenir ve bilgisayar sana haber verir.
 
-**Bağlantı geçmişi.** Programın altındaki **Bağlantı geçmişi** kimin ne zaman bağlandığını, ne kadar kaldığını, kime izin verip kimi reddettiğini, kimin paylaşımı başlattığını, kaydettiğini ya da mikrofonu açtığını gösterir. Yanlış PIN ve kanıtlanamayan mühür gibi şüpheli olaylar kırmızı görünür. Geçmiş yalnızca bu bilgisayarda tutulur (son 300 olay) ve **Geçmişi temizle** ile silinir.
+**Bağlantı geçmişi.** **Geçmiş** bölümü kimin ne zaman bağlandığını, ne kadar kaldığını, kime izin verip kimi reddettiğini, kimin paylaşımı başlattığını, kaydettiğini ya da mikrofonu açtığını gösterir. Yanlış PIN ve kanıtlanamayan mühür gibi şüpheli olaylar kırmızı görünür. Geçmiş yalnızca bu bilgisayarda tutulur (son 300 olay) ve **Geçmişi temizle** ile silinir.
 
 ## Telefonda kayıt
 
@@ -179,20 +184,22 @@ Artık telefona söylediklerin Discord'a gider. Bilgisayarın sesi paylaşılıy
 
 ## Telefon bilgisayarda
 
-Bu sefer tersi: telefon ekranını ya da kamerasını bilgisayarda bir pencerede gösterir. Bunun için masaüstü uygulaması gerekir ve yalnızca hatırladığın cihazlar yapabilir. **Hatırlanan cihazlar** listesinde her cihazın yanında bunlar için kutular var, hepsi varsayılan olarak kapalı:
+Bu sefer tersi: telefon ekranını ya da kamerasını bilgisayarda bir pencerede gösterir. Bunun için masaüstü uygulaması gerekir ve yalnızca hatırladığın cihazlar yapabilir. **Cihazlar → İzinler ve PIN** altında her cihazın bunlar için anahtarları var, hepsi varsayılan olarak kapalı:
 
 - **Ekranını gösterebilir** (yalnızca Android uygulaması)
 - **Kamerasını gösterebilir** (Android uygulaması ya da https adresindeki bir tarayıcı)
 - **Buradan kontrol edilebilir** (**Ekranını gösterebilir** işaretlenince görünür)
 
-Bilgisayar her seferinde bildirim gösterir, **Bağlı cihazlar** listesinde cihazın yanında **ekranını gösteriyor** ya da **kamerasını gösteriyor** yazar, [bağlantı geçmişi](#güvenlik) de ne kadar sürdüğünü ve neden bittiğini not eder. Pencereyi kapatmak bitirir.
+Telefon bunu **Ekranımı göster** ya da **Kameramı göster** ile kendisi başlatır, ya da bilgisayar ister: **İzle** bölümü buna izinli bağlı telefonları **Ekranını iste** ve **Kamerasını iste** butonlarıyla listeler. Telefonda soru çıkar; oradan onay vermeden hiçbir şey başlamaz.
+
+Bilgisayar her seferinde bildirim gösterir, **Bağlı cihazlar** listesinde cihazın yanında **ekranını gösteriyor** ya da **kamerasını gösteriyor** yazar, [bağlantı geçmişi](#güvenlik) de ne kadar sürdüğünü ve neden bittiğini not eder. Pencereyi kapatmak bitirir; telefon durdurunca pencere nedenini kısa bir süre gösterip kendiliğinden kapanır. Butonları birkaç saniye hareketsiz kalınca kaybolur, sol üst köşedeki silik düğme de onları tamamen kaldırır.
 
 ### Telefonun ekranı ve sesi
 
 Android uygulamasında bilgisayara bağlan (bilgisayarın paylaşım yapıyor olması gerekmez) ve **Ekranımı göster**'e dokun. Android her seferinde izin ister ve ekran gösterildiği sürece **Durdur** butonlu bir bildirim tutar. Ekrandaki her şey, bildirimler de dahil, bilgisayarda görünür; özel bir şey açmadan önce durdur.
 
 - Görüntüyü telefonun donanımı kodlar ve 60 FPS'e kadar doğrudan bilgisayara gider. Tam ekran için pencereye çift tıkla (telefon kontrol edilmiyorken). Alttaki satır durumu gösterir (kare hızları, kesintiler, ses düzeyi).
-- **Ses** (Android 10 ve sonrası) görüntüyle birlikte, eş zamanlı gelir. Android bunun için mikrofon izni ister, çünkü uygulamaların çaldığı sesi almayı kayıt sayar. **Ses: PC + telefon** iki yerde de çalar; **Ses: yalnız PC** telefonun medya sesini kısar. Bunun bilgisayara giden sesi de kestiği telefonlarda Ayva kendiliğinden ikisine döner. Pencerenin kendi çıkış seçicisi (başka seçmezsen Windows'un varsayılan çıkışı) ve %200'e kadar ses ayarı var. Bazı uygulamalar seslerinin alınmasına izin vermez, telefon görüşmeleri hiç alınmaz.
+- **Ses** (Android 10 ve sonrası) görüntüyle birlikte, eş zamanlı gelir. Android bunun için mikrofon izni ister, çünkü uygulamaların çaldığı sesi almayı kayıt sayar. **Ses: PC + telefon** iki yerde de çalar; **Ses: yalnız PC** telefonun medya sesini kısar. Bunun bilgisayara giden sesi de kestiği telefonlarda Ayva kendiliğinden ikisine döner. Penceredeki **Ses** butonu ses düzeyini (%200'e kadar), hoparlörü (başka seçmezsen Windows'un varsayılan çıkışı) ve yalnız PC ya da ikisi ayarını açar. Bazı uygulamalar seslerinin alınmasına izin vermez, telefon görüşmeleri hiç alınmaz.
 - Telefonda başka uygulamalara geçince de devam eder. Ekran kapanırsa görüntü bekler ve ekran açılınca devam eder; telefonu kilitlemek bitirebilir.
 - **Pil tasarrufu** Ayva'yı arka planda kapatabilir. Telefon Ayva'nın pil kullanımını kısıtlıyorsa **Pil kısıtlamasını kaldır** doğru ayar sayfasını açar (**Kısıtlamasız**'ı seç). Ekran gösterme kendiliğinden durduysa uygulama bir sonraki açılışta nedenini söyler.
 
@@ -219,15 +226,15 @@ Eşleşen bilgisayar telefonda geniş yetki kazanır, bu yüzden yalnızca kendi
 ## Arka planda çalışma
 
 Pencereyi kapatınca Ayva saat yanındaki simgede çalışmaya devam eder, TV'ler bilgisayarı bulmayı sürdürür. Çıkmak için simgeye sağ tıklayıp **Çıkış**'ı seç.
-Programdaki (ya da simge menüsündeki) **Windows açılınca Ayva'yı arka planda başlat** seçeneğiyle Ayva otomatik açılır.
+**Ayarlar**'daki (ya da simge menüsündeki) **Windows açılınca Ayva'yı arka planda başlat** seçeneğiyle Ayva otomatik açılır.
 İnternet linki her açılışta değiştiği için yeniden başlatmadan sonra dışarıdan bağlanmak için yeni linki görmen gerekir.
 
 ## Güncellemeler
 
 Kurulu program açılışta ve birkaç saatte bir GitHub Releases'te yeni sürüm olup olmadığına bakar, varsa arka planda indirir.
-Yeniden başlatmak süren paylaşımı keseceği için Ayva kendi kendine kurmaz: uygun olduğunda bildirime ya da Ayva penceresinin altındaki (veya simge menüsündeki) **Yeniden başlat ve güncelle**'ye tıkla. Aynı satır kurulu sürümü de gösterir; oradaki **Güncellemeleri denetle** hemen kontrol eder.
+Yeniden başlatmak süren paylaşımı keseceği için Ayva kendi kendine kurmaz: uygun olduğunda bildirime ya da **Ayarlar**'daki (veya simge menüsündeki) **Yeniden başlat ve güncelle**'ye tıkla. Aynı satır kurulu sürümü de gösterir; oradaki **Güncellemeleri denetle** hemen kontrol eder.
 
-Android uygulaması (0.8.1 ve sonrası) da açılışta GitHub Releases'e bakar. Yeni sürüm varsa listenin en üstünde **⬆ Ayva x.y.z sürümüne güncelle** görünür; dokununca indirir ve Android'in kendi kurulum sorusunu açar. İlk seferde Android, Ayva'nın uygulama kurmasına izin vermeni ister. Listenin altındaki sürüm satırı hemen denetler. 0.8.0'dan 0.8.1'e geçiş bir kez elle yapılır.
+Android uygulaması (0.8.1 ve sonrası) da açılışta GitHub Releases'e bakar. Yeni sürüm varsa açılış ekranının en üstünde **⬆ Ayva x.y.z sürümüne güncelle** şeridi görünür; dokununca indirir ve Android'in kendi kurulum sorusunu açar. İlk seferde Android, Ayva'nın uygulama kurmasına izin vermeni ister. Listenin altındaki sürüm satırı hemen denetler. 0.8.0'dan 0.8.1'e geçiş bir kez elle yapılır.
 
 ## Sadece tarayıcı (kurulumsuz)
 

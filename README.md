@@ -41,15 +41,20 @@ You can also use the **Send files to TV** app or `adb install Ayva-Android.apk`.
 3. **TV:** open Ayva on the TV. **Phone at home:** open the address shown under "On the TV open". **Phone elsewhere:** see below.
 4. The first time a device connects, the computer asks **Allow / Deny**. Tick **Remember this device** to skip the question next time.
 
+The Ayva window has its sections on the left: **Share**, **Watch** (a phone's screen or camera here), **Devices**, **Remote access**, **History** and **Settings**. The **‹** under the logo folds them to icons only. The grip in the bottom-right corner makes the window bigger or smaller, and **Settings → Colours** picks one of six colour themes (the phone has the same under **More**).
+
+The code and this computer's addresses are **blurred** until you press **Show**, from the moment Ayva opens, so nobody can read them off your screen; they blur again whenever sharing starts or stops.
+
 While sharing:
 
 - **Switch screen** changes what is shared without disconnecting anyone.
-- The code, links and QR code are **blurred** (press **Show** to see them), and the Ayva window itself is **left out of the stream**.
+- The Ayva window itself is **left out of the stream**, and the links under **Remote access** are blurred too (with their own **Show**).
+- **Send file**, **Send clipboard** and **Privacy mode** are under the **⋯** button next to the sharing buttons.
 - **Connected devices** lists who is watching, with a **Disconnect** button for each. Remembered devices can be forgotten there too.
 
 ## Watching from anywhere
 
-Press **Allow access over the internet** in Ayva. The first time, Cloudflare's free tunnel tool `cloudflared` is downloaded (~60 MB, from Cloudflare's GitHub releases).
+Under **Remote access** in Ayva, press **Allow access over the internet**. The first time, Cloudflare's free tunnel tool `cloudflared` is downloaded (~60 MB, from Cloudflare's GitHub releases).
 Ayva then shows a `https://….trycloudflare.com` link and a **QR code**. Scan it with your phone on mobile data or any Wi-Fi.
 
 - The link contains a long random **access key**. The 6-digit code alone is not enough over the internet.
@@ -63,7 +68,7 @@ Cloudflare offers these quick tunnels free of charge but meant for testing, with
 
 ## Fixed address (Cloudflare, free)
 
-Press **Set up a fixed address (Cloudflare)** in Ayva and follow the steps: on a free Cloudflare account, create an API token from the "Edit Cloudflare Workers" template, paste it into Ayva and choose a viewing password. Ayva deploys itself to your account and gives you a link like `https://ayva.<name>.workers.dev`, with a QR code, that **never changes**. A phone enters the password once and then connects with the same link every time.
+Under **Remote access** in Ayva, press **Set up a fixed address (Cloudflare)** and follow the steps: on a free Cloudflare account, create an API token from the "Edit Cloudflare Workers" template, paste it into Ayva and choose a viewing password. Ayva deploys itself to your account and gives you a link like `https://ayva.<name>.workers.dev`, with a QR code, that **never changes**. A phone enters the password once and then connects with the same link every time.
 
 **Phone stuck on "Connecting to server…":** some internet providers block `workers.dev` addresses. In Chrome choose **⋮ → Settings → Privacy and security → Use secure DNS → Choose another provider → Cloudflare (1.1.1.1)** and reopen the page. (The Ayva app does this on the computer by itself.) The Android app needs no setting: on such networks it sends the connection's opening message in two parts, so the filter cannot read the address, without touching the encryption.
 
@@ -97,7 +102,7 @@ The backup route is separate from the fixed address. It works with the fixed add
 1. Sign in at [dash.cloudflare.com](https://dash.cloudflare.com) (or create a free account).
 2. In the menu, open **Realtime** (on some accounts **Calls**), then **TURN Server**, and press **Create** (or **Create TURN Key**). Any name will do, for example `ayva`.
 3. Cloudflare shows two values: **Turn Token ID** and **API Token**. The API Token is shown **only once**, so keep the page open.
-4. In Ayva, open **Backup route (Cloudflare TURN)** under the code, paste both values and press **Turn on**. Ayva checks them with Cloudflare before keeping them.
+4. In Ayva, open **Backup route (Cloudflare TURN)** under **Remote access**, paste both values and press **Turn on**. Ayva checks them with Cloudflare before keeping them.
 
 To turn it off, press **Turn off the backup route** in Ayva. To make the key useless everywhere, also delete it in the Cloudflare dashboard.
 
@@ -138,12 +143,12 @@ Windows does not let other programs control windows running as administrator (su
 
 ## Starting from the phone or TV
 
-Under **Remembered devices** in the app, each device has two boxes, both off by default:
+Under **Devices** in the app, **Rights and PIN** opens each remembered device's switches, all off by default. Two of them act on this computer:
 
 - **Can start sharing:** the device shows **Start sharing** while it waits, and **Stop sharing** while it watches. It shares the computer's main screen (with sound, unless you untick that in the picker), and the computer shows a notification every time.
 - **Can control:** while sharing, the device can use the mouse and keyboard (and send files) without you pressing **Allow control**. Other devices still only watch. **Ctrl+Alt+K** stops it until sharing starts again.
 
-Only devices you remembered when allowing them get these boxes, never one you let in just once. **Forget** takes both rights away at once.
+Only devices you remembered when allowing them get these switches, never one you let in just once. **Forget** takes both rights away at once.
 
 **Choosing the screen:** with more than one monitor, a device that may start sharing or control gets a screen menu while it watches (Screen 1, Screen 2 (main), left to right) and can switch without reconnecting. The computer shows who switched.
 
@@ -153,9 +158,9 @@ Only devices you remembered when allowing them get these boxes, never one you le
 
 Each signature also names the address the device is looking at, and the computer only accepts its own addresses: its home-network address, the fixed address, or the current internet link. In the Android app the address is filled in by the app, not by the page. So a lookalike page somewhere else (say, a link or QR code someone sends you that opens another `workers.dev` page in the Ayva app) cannot get a signature that works on your computer. A page left open from before an update is disconnected once and only needs reloading.
 
-**PIN.** Under **Remembered devices**, **PIN** sets a 4–8 digit PIN for a device. The device then has to enter it on every connection before it may start sharing or control, so a stolen unlocked phone is not enough. The PIN is stored on the computer only as a salted hash, the device sends a hash tied to that connection, and five wrong tries lock the device's rights for 15 minutes (the computer tells you).
+**PIN.** Under **Devices**, **Rights and PIN → PIN** sets a 4–8 digit PIN for a device. The device then has to enter it on every connection before it may start sharing or control, so a stolen unlocked phone is not enough. The PIN is stored on the computer only as a salted hash, the device sends a hash tied to that connection, and five wrong tries lock the device's rights for 15 minutes (the computer tells you).
 
-**Connection history.** **Connection history** at the bottom of the app shows who connected and when, how long they stayed, whom you let in or turned away, and who started sharing, recorded or turned the microphone on. Suspicious events, such as a wrong PIN or a device that could not prove its key, show in red. The history stays on this computer (the last 300 events), and **Clear history** deletes it.
+**Connection history.** The **History** section shows who connected and when, how long they stayed, whom you let in or turned away, and who started sharing, recorded or turned the microphone on. Suspicious events, such as a wrong PIN or a device that could not prove its key, show in red. The history stays on this computer (the last 300 events), and **Clear history** deletes it.
 
 ## Recording on the phone
 
@@ -181,20 +186,22 @@ Now what you say into the phone goes to Discord. If the computer's sound is bein
 
 ## The phone on the computer
 
-The other way round: a phone shows its screen or camera in a window on the computer. This needs the desktop app, and only devices you remembered can do it. Under **Remembered devices**, each one has boxes for it, all off by default:
+The other way round: a phone shows its screen or camera in a window on the computer. This needs the desktop app, and only devices you remembered can do it. Under **Devices → Rights and PIN**, each one has switches for it, all off by default:
 
 - **Can show its screen** (Android app only)
 - **Can show its camera** (Android app, or a browser at an https address)
 - **Can be controlled from here** (appears once **Can show its screen** is ticked)
 
-The computer sends a notification every time, **Connected devices** shows **showing its screen** or **showing its camera** next to the device, and the [connection history](#security) notes how long it went and why it ended. Closing the window ends it.
+The phone starts it with **Show my screen** or **Show my camera**, or the computer asks for it: the **Watch** section lists the connected phones that may, with **Ask for its screen** and **Ask for its camera**. The phone then shows the question, and nothing starts without a tap there.
+
+The computer sends a notification every time, **Connected devices** shows **showing its screen** or **showing its camera** next to the device, and the [connection history](#security) notes how long it went and why it ended. Closing the window ends it; when the phone stops, the window says why for a moment and closes by itself. Its buttons fade after a few still seconds, and the faint button in its top-left corner puts them away altogether.
 
 ### The phone's screen and sound
 
 In the Android app, connect to the computer (it does not need to be sharing) and tap **Show my screen**. Android asks for permission each time and keeps a notification with a **Stop** button while the screen is shown. Everything on the screen can be seen on the computer, including notifications, so stop it before opening anything private.
 
 - The picture is encoded by the phone's hardware and goes peer-to-peer at up to 60 FPS. Double-click the window for full screen (while the phone is not being controlled). A line at the bottom shows how it is doing (frame rates, gaps, sound level).
-- **Sound** (Android 10 and newer) comes with the picture, in step. Android asks for the microphone permission for this, because it counts capturing what apps play as recording. **Sound: PC + phone** plays it on both; **Sound: PC only** turns the phone's media volume down. On phones where that also silences what reaches the computer, Ayva goes back to both by itself. The window has its own output picker (Windows' default output unless you choose another) and a volume slider up to 200 %. Some apps do not allow their sound to be captured, and phone calls never are.
+- **Sound** (Android 10 and newer) comes with the picture, in step. Android asks for the microphone permission for this, because it counts capturing what apps play as recording. **Sound: PC + phone** plays it on both; **Sound: PC only** turns the phone's media volume down. On phones where that also silences what reaches the computer, Ayva goes back to both by itself. The window's **Sound** button opens its volume (up to 200 %), the speaker (Windows' default output unless you choose another) and the PC-only or both setting. Some apps do not allow their sound to be captured, and phone calls never are.
 - It keeps going while you use other apps on the phone. If the screen turns off, the picture waits and goes on when it is on again; locking the phone may end it.
 - **Battery saving** may close Ayva in the background. If the phone limits Ayva's battery use, **Remove battery limit** opens the right settings page (choose **Unrestricted**). When showing the screen stopped by itself, the app says why the next time.
 
@@ -221,15 +228,15 @@ A paired computer has wide access to the phone, so pair only your own computer. 
 ## Running in the background
 
 Closing the window keeps Ayva running in the system tray, so TVs can still find the computer. Right-click the tray icon to **Quit**.
-Tick **Start Ayva in the background when Windows starts** in the app (or in the tray menu) to launch it automatically.
+Turn on **Start Ayva in the background when Windows starts** under **Settings** (or in the tray menu) to launch it automatically.
 The internet link changes each time internet access is turned on, so Ayva cannot yet be reached from outside after a restart without looking at the new link.
 
 ## Updates
 
 The installed app checks GitHub Releases for a new version at startup and every few hours, and downloads it in the background.
-Restarting would end a running share, so Ayva never installs on its own: click the notification, or **Restart and update** at the bottom of the Ayva window (or in the tray menu), when it suits you. The same line shows the installed version, and **Check for updates** there checks right away.
+Restarting would end a running share, so Ayva never installs on its own: click the notification, or **Restart and update** under **Settings** (or in the tray menu), when it suits you. The same line shows the installed version, and **Check for updates** there checks right away.
 
-The Android app (0.8.1 and later) also checks GitHub Releases when it opens. When there is a new version, **⬆ Update to Ayva x.y.z** appears at the top of the list: tap it to download the update and open Android's own install prompt. The first time, Android asks you to let Ayva install apps. The version line at the bottom of the list checks right away. Going from 0.8.0 to 0.8.1 is a one-time manual install.
+The Android app (0.8.1 and later) also checks GitHub Releases when it opens. When there is a new version, a **⬆ Update to Ayva x.y.z** strip appears at the top of its start screen: tap it to download the update and open Android's own install prompt. The first time, Android asks you to let Ayva install apps. The version line at the bottom of the list checks right away. Going from 0.8.0 to 0.8.1 is a one-time manual install.
 
 ## Browser only (no install)
 
