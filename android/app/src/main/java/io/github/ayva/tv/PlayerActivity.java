@@ -3,13 +3,19 @@ package io.github.ayva.tv;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.UiModeManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -28,18 +34,24 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
+import androidx.webkit.JavaScriptReplyProxy;
 import androidx.webkit.ProxyConfig;
 import androidx.webkit.ProxyController;
+import androidx.webkit.WebMessageCompat;
+import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Full-screen player. Shows the computer's watch page, which receives the
  * WebRTC stream; Back returns to the computer list. On phones it also lends
  * the page what a browser would: the microphone, a file picker, Downloads,
- * and the device key (DeviceKey) kept in the Android Keystore.
+ * the device key (DeviceKey) kept in the Android Keystore, and the phone's
+ * own screen (ScreenService), which the page can show on the computer.
  */
 public class PlayerActivity extends Activity {
 
@@ -47,6 +59,11 @@ public class PlayerActivity extends Activity {
 
     private static final int REQUEST_MIC = 1;
     private static final int REQUEST_FILES = 2;
+    private static final int REQUEST_SCREEN = 3;
+    private static final int REQUEST_NOTIFY = 4;
+    // Encoded pictures waiting for the page; past this many it has fallen
+    // behind, and pictures are skipped until the next key frame.
+    private static final int SCREEN_MAX_QUEUED = 10;
 
     private WebView web;
     private TextView problems; // what failed to load, for troubleshooting
@@ -60,6 +77,12 @@ public class PlayerActivity extends Activity {
     private String proofOrigin; // the computer's real address, named in device proofs
     private MediaModeKeeper mediaMode;
     private boolean micUsed; // the page has had the microphone
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private JavaScriptReplyProxy screenReply; // the page's AyvaScreen object, to answer it
+    private final AtomicInteger screenQueued = new AtomicInteger();
+    private final AtomicInteger screenSkipped = new AtomicInteger(); // since the page last asked
+    private boolean screenSkipping; // encoder thread only
+    private ScreenService.Sink screenSink;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
@@ -89,7 +112,10 @@ public class PlayerActivity extends Activity {
         currentOrigin = origin;
 
         mediaMode = new MediaModeKeeper(this);
-        web = new WebView(this);
+        // Test builds only (-PnameSuffix=-test.N): the page can be inspected
+        // over ADB (chrome://inspect), to see what it does while it is out of sight.
+        if (isTestBuild()) WebView.setWebContentsDebuggingEnabled(true);
+        web = new PageView(this);
         web.setBackgroundColor(Color.BLACK);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -123,6 +149,22 @@ public class PlayerActivity extends Activity {
             public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
                 problem(pathOf(request.getUrl()) + ": HTTP " + response.getStatusCode());
             }
+
+            // Android ended the page's process (memory): back to the computer
+            // list instead of the whole app crashing.
+            @Override
+            public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                if (ScreenService.isRunning()) {
+                    ScreenService.note(PlayerActivity.this, detail.didCrash() ? "page-crashed" : "page-closed");
+                }
+                if (view == web) {
+                    ((FrameLayout) web.getParent()).removeView(web);
+                    web.destroy();
+                    web = null;
+                }
+                finish();
+                return true;
+            }
         });
         web.setWebChromeClient(new Chrome());
         if (DeviceKey.supported()) {
@@ -130,6 +172,7 @@ public class PlayerActivity extends Activity {
                     () -> origin != null && origin.equals(currentOrigin) ? proofOrigin : null), "AyvaKey");
         }
         web.addJavascriptInterface(new FileSaver(this), "AyvaFiles");
+        addScreenBridge();
         FrameLayout root = new FrameLayout(this);
         root.addView(web);
         problems = new TextView(this);
@@ -144,6 +187,7 @@ public class PlayerActivity extends Activity {
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP));
         setContentView(root);
         hideSystemUi();
+        showLastScreenEnd();
 
         // The fixed address goes through SplitProxy, past networks that block workers.dev.
         String host = Uri.parse(url).getHost();
@@ -167,6 +211,21 @@ public class PlayerActivity extends Activity {
     // Only the path: links may carry an access key, which must not end up in a screenshot.
     private static String pathOf(Uri u) {
         return u == null ? "?" : (u.getPath() == null || u.getPath().isEmpty() ? "/" : u.getPath());
+    }
+
+    // Showing the screen ended last time without the user stopping it: say
+    // why at the top, until tapped away (see ScreenService.note).
+    private void showLastScreenEnd() {
+        String last = ScreenService.takeNote(this);
+        int text;
+        if ("running".equals(last) && !ScreenService.isRunning()) text = R.string.screen_end_killed;
+        else if ("page-closed".equals(last) || "page-crashed".equals(last)) text = R.string.screen_end_page;
+        else if ("system".equals(last)) text = R.string.screen_end_system;
+        else if ("locked".equals(last)) text = R.string.screen_end_locked;
+        else if ("failed".equals(last)) text = R.string.screen_end_failed;
+        else return;
+        problems.setText(getString(text) + " (" + Build.MANUFACTURER + " " + Build.MODEL + ", Android " + Build.VERSION.RELEASE + ")");
+        problems.setVisibility(View.VISIBLE);
     }
 
     // Shown on top of the page until tapped away, so a screenshot says what went wrong.
@@ -203,25 +262,31 @@ public class PlayerActivity extends Activity {
             return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
         }
 
+        // The microphone ("Talk") and the camera ("Show my camera"), only for
+        // the computer's own page; Android is asked first when needed.
         @Override
         public void onPermissionRequest(PermissionRequest request) {
             runOnUiThread(() -> {
-                boolean wantsMic = false;
+                List<String> wanted = new ArrayList<>();
                 for (String r : request.getResources()) {
-                    if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) wantsMic = true;
+                    if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)
+                            || PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) wanted.add(r);
                 }
-                if (!wantsMic || !originOf(request.getOrigin().toString()).equals(origin)) {
+                if (wanted.isEmpty() || !originOf(request.getOrigin().toString()).equals(origin)) {
                     request.deny();
                     return;
                 }
-                if (Build.VERSION.SDK_INT < 23
-                        || checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                    request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
-                    micStarted();
-                } else {
-                    pendingMic = request;
-                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_MIC);
+                if (pendingMic != null) pendingMic.deny();
+                pendingMic = request;
+                List<String> missing = new ArrayList<>();
+                for (String r : wanted) {
+                    String p = androidPermission(r);
+                    if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) {
+                        missing.add(p);
+                    }
                 }
+                if (missing.isEmpty()) answerPageRequest();
+                else requestPermissions(missing.toArray(new String[0]), REQUEST_MIC);
             });
         }
 
@@ -245,18 +310,44 @@ public class PlayerActivity extends Activity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
-        if (requestCode != REQUEST_MIC || pendingMic == null) return;
-        if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
-            pendingMic.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
-            micStarted();
-        } else {
-            pendingMic.deny();
+        // Without notifications the capture still works; Android just hides its Stop button.
+        if (requestCode == REQUEST_NOTIFY) {
+            askScreen();
+            return;
         }
+        if (requestCode != REQUEST_MIC || pendingMic == null) return;
+        answerPageRequest();
+    }
+
+    private static String androidPermission(String resource) {
+        return PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)
+                ? Manifest.permission.CAMERA : Manifest.permission.RECORD_AUDIO;
+    }
+
+    // Grants the page what Android allows; refused if any of it is not.
+    private void answerPageRequest() {
+        PermissionRequest request = pendingMic;
         pendingMic = null;
+        if (request == null) return;
+        List<String> granted = new ArrayList<>();
+        for (String r : request.getResources()) {
+            if (!PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r) && !PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) continue;
+            if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(androidPermission(r)) != PackageManager.PERMISSION_GRANTED) {
+                request.deny();
+                return;
+            }
+            granted.add(r);
+        }
+        request.grant(granted.toArray(new String[0]));
+        if (granted.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) micStarted();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_SCREEN) {
+            screenAllowed(resultCode, data);
+            return;
+        }
         if (requestCode != REQUEST_FILES || pendingFiles == null) return;
         Uri[] picked = null;
         if (resultCode == RESULT_OK && data != null) {
@@ -303,8 +394,226 @@ public class PlayerActivity extends Activity {
         mediaMode.stop();
     }
 
+    // ---- The phone's screen on the computer ----
+    // The page gets an AyvaScreen object (only on this computer's address, in
+    // the main frame) and posts "start", "stop", "key" (send a key frame now)
+    // or "bitrate:<bits per second>". It gets back "on", "off", "denied" or
+    // "failed", and each encoded picture as an ArrayBuffer (see ScreenEncoder).
+
+    private void addScreenBridge() {
+        if (isTv() || origin == null
+                || !WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)
+                || !WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_ARRAY_BUFFER)) {
+            return;
+        }
+        WebViewCompat.addWebMessageListener(web, "AyvaScreen", Collections.singleton(origin),
+                (view, message, sourceOrigin, isMainFrame, reply) -> {
+                    if (!isMainFrame || message.getType() != WebMessageCompat.TYPE_STRING) return;
+                    String cmd = message.getData();
+                    if (cmd == null) return;
+                    screenReply = reply;
+                    if (cmd.equals("start")) startScreen();
+                    else if (cmd.equals("stop")) stopService(new Intent(this, ScreenService.class));
+                    else if (cmd.equals("key")) ScreenService.requestKeyFrame();
+                    else if (cmd.equals("stats")) {
+                        reply.postMessage("stats:" + screenSkipped.getAndSet(0) + "," + ScreenService.soundLevel()
+                                + "," + ScreenService.encodedFrames());
+                    }
+                    else if (cmd.equals("debug")) {
+                        // Test builds: what the computer reads over ADB when the picture stops.
+                        reply.postMessage("debug:queued=" + screenQueued.get() + " skipping=" + screenSkipping
+                                + " service=" + ScreenService.isRunning());
+                    }
+                    else if (cmd.equals("sound:pc")) ScreenService.setPhoneSound(false);
+                    else if (cmd.equals("sound:both")) ScreenService.setPhoneSound(true);
+                    else if (cmd.equals("battery?")) reply.postMessage(batteryLimited() ? "battery:limited" : "battery:ok");
+                    else if (cmd.equals("battery-settings")) openAppSettings();
+                    else if (cmd.startsWith("bitrate:")) {
+                        try {
+                            int bps = Integer.parseInt(cmd.substring(8));
+                            ScreenService.setBitrate(Math.max(300_000, Math.min(bps, 12_000_000)));
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                });
+        screenSink = new ScreenService.Sink() {
+            @Override
+            public void frame(byte[] data) {
+                // Sound (from ScreenAudio's own thread) is small and never waits for a key frame.
+                if ((data[0] & 8) != 0) {
+                    if (screenQueued.get() > SCREEN_MAX_QUEUED * 3) return;
+                    screenQueued.incrementAndGet();
+                    main.post(() -> {
+                        screenQueued.decrementAndGet();
+                        if (screenReply != null) screenReply.postMessage(data);
+                    });
+                    return;
+                }
+                boolean key = (data[0] & 1) != 0;
+                if (screenQueued.get() > SCREEN_MAX_QUEUED) {
+                    if (!screenSkipping) ScreenService.requestKeyFrame();
+                    screenSkipping = true;
+                    screenSkipped.incrementAndGet();
+                    return;
+                }
+                if (screenSkipping && !key) {
+                    screenSkipped.incrementAndGet();
+                    return;
+                }
+                screenSkipping = false;
+                screenQueued.incrementAndGet();
+                main.post(() -> {
+                    screenQueued.decrementAndGet();
+                    if (screenReply != null) screenReply.postMessage(data);
+                });
+            }
+
+            @Override
+            public void state(String state) {
+                // Only the capture starting or ending changes it, not news about the sound.
+                if (!state.startsWith("sound:") && !state.startsWith("screen:")) {
+                    main.post(() -> keepPageAlive(state.equals("on")));
+                }
+                screenEvent(state);
+            }
+        };
+        ScreenService.sink = screenSink;
+    }
+
+    // The page sends the picture on, also while the user is in another app.
+    // A WebView out of sight normally gives its page process a low priority,
+    // and Android may end it under memory pressure; not while showing the screen.
+    private void keepPageAlive(boolean on) {
+        if (web == null) return;
+        ((PageView) web).setKeepRunning(on);
+        if (Build.VERSION.SDK_INT < 26) return;
+        web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, !on);
+    }
+
+    // Chromium freezes a page about a minute after its window goes out of
+    // sight: no timers, no messages, so the picture and sound stopped while
+    // the user was in another app. While the screen is shown it is told the
+    // window is still visible, which keeps the page running; only then.
+    private static final class PageView extends WebView {
+        private boolean keepRunning;
+
+        PageView(Context context) {
+            super(context);
+        }
+
+        void setKeepRunning(boolean on) {
+            if (keepRunning == on) return;
+            keepRunning = on;
+            super.onWindowVisibilityChanged(on ? View.VISIBLE : getWindowVisibility());
+        }
+
+        @Override
+        protected void onWindowVisibilityChanged(int visibility) {
+            super.onWindowVisibilityChanged(keepRunning ? View.VISIBLE : visibility);
+        }
+    }
+
+    private void screenEvent(String state) {
+        main.post(() -> {
+            if (screenReply != null) screenReply.postMessage(state);
+        });
+    }
+
+    private void startScreen() {
+        if (ScreenService.isRunning()) {
+            screenEvent("on");
+            return;
+        }
+        // Notifications (the Stop button) and, for the phone's sound, the
+        // microphone permission, which Android requires for capturing what
+        // apps play. Either may be refused: the picture still goes.
+        List<String> missing = new ArrayList<>();
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            missing.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+        if (Build.VERSION.SDK_INT >= 29
+                && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            missing.add(Manifest.permission.RECORD_AUDIO);
+        }
+        if (!missing.isEmpty()) {
+            requestPermissions(missing.toArray(new String[0]), REQUEST_NOTIFY);
+            return;
+        }
+        askScreen();
+    }
+
+    // Android's own "start recording or casting?" question, every time.
+    private void askScreen() {
+        try {
+            MediaProjectionManager mpm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+            startActivityForResult(mpm.createScreenCaptureIntent(), REQUEST_SCREEN);
+        } catch (Exception e) {
+            screenEvent("failed");
+        }
+    }
+
+    private void screenAllowed(int resultCode, Intent data) {
+        if (resultCode != RESULT_OK || data == null) {
+            screenEvent("denied");
+            return;
+        }
+        Intent service = new Intent(this, ScreenService.class)
+                .putExtra(ScreenService.EXTRA_RESULT, resultCode)
+                .putExtra(ScreenService.EXTRA_DATA, data);
+        try {
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(service);
+            else startService(service);
+        } catch (Exception e) {
+            screenEvent("failed");
+        }
+    }
+
+    // Battery saving may close Ayva while it is in the background, even
+    // while showing the screen; "Unrestricted" battery use keeps it running.
+    // Only checked and pointed to here: no permission is asked for.
+    private boolean batteryLimited() {
+        if (Build.VERSION.SDK_INT < 23) return false;
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+        boolean optimized = pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName());
+        boolean restricted = false;
+        if (Build.VERSION.SDK_INT >= 28) {
+            android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            restricted = am != null && am.isBackgroundRestricted();
+        }
+        return optimized || restricted;
+    }
+
+    // Ayva's page in Settings, where battery use is set.
+    private void openAppSettings() {
+        try {
+            startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName())));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private boolean isTestBuild() {
+        try {
+            String v = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            return v != null && v.contains("-test");
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
+    }
+
+    private boolean isTv() {
+        UiModeManager ui = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
+        return ui != null && ui.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
+    }
+
     @Override
     protected void onDestroy() {
+        // The picture goes out through this page: without it there is nowhere to send it.
+        if (screenSink != null && ScreenService.sink == screenSink) {
+            ScreenService.sink = null;
+            stopService(new Intent(this, ScreenService.class));
+        }
         if (web != null) {
             web.loadUrl("about:blank");
             web.destroy();

@@ -29,4 +29,13 @@
     <string name="camera_denied">Ayva needs the camera to scan the QR code.</string>
     <string name="camera_failed">The camera could not be opened.</string>
     <string name="load_problems">Something did not load (tap to hide):</string>
+    <string name="screen_channel">Showing the screen</string>
+    <string name="screen_on">Your screen is shown on the computer</string>
+    <string name="screen_on_text">Everything on this screen can be seen on the computer.</string>
+    <string name="screen_stop">Stop</string>
+    <string name="screen_end_killed">"Showing the screen stopped last time because Android closed Ayva in the background (battery saving). In Settings, set Ayva's battery use to Unrestricted. Tap to hide."</string>
+    <string name="screen_end_page">"Showing the screen stopped last time because Android closed Ayva's page in the background (memory or battery saving). Setting Ayva's battery use to Unrestricted may help. Tap to hide."</string>
+    <string name="screen_end_system">"Showing the screen stopped last time because Android ended the screen capture. Tap to hide."</string>
+    <string name="screen_end_locked">"Showing the screen stopped last time because the phone's screen turned off or locked. Tap to hide."</string>
+    <string name="screen_end_failed">"Showing the screen stopped last time because the phone's encoder failed. Tap to hide."</string>
 </resources>

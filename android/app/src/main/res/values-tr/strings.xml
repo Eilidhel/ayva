@@ -29,4 +29,13 @@
     <string name="camera_denied">QR kodu taramak için Ayva\'nın kameraya erişmesine izin ver.</string>
     <string name="camera_failed">Kamera açılamadı.</string>
     <string name="load_problems">Bir şey yüklenemedi (gizlemek için dokun):</string>
+    <string name="screen_channel">Ekranı gösterme</string>
+    <string name="screen_on">Ekranın bilgisayarda gösteriliyor</string>
+    <string name="screen_on_text">Bu ekrandaki her şey bilgisayarda görülebilir.</string>
+    <string name="screen_stop">Durdur</string>
+    <string name="screen_end_killed">"Ekranı gösterme geçen sefer durdu çünkü Android, arka plandaki Ayva'yı kapattı (pil tasarrufu). Ayarlar'da Ayva'nın pil kullanımını Sınırsız yap. Gizlemek için dokun."</string>
+    <string name="screen_end_page">"Ekranı gösterme geçen sefer durdu çünkü Android, arka planda Ayva'nın sayfasını kapattı (bellek ya da pil tasarrufu). Ayva'nın pil kullanımını Sınırsız yapmak işe yarayabilir. Gizlemek için dokun."</string>
+    <string name="screen_end_system">"Ekranı gösterme geçen sefer durdu çünkü Android ekran kaydını bitirdi. Gizlemek için dokun."</string>
+    <string name="screen_end_locked">"Ekranı gösterme geçen sefer durdu çünkü telefonun ekranı kapandı ya da kilitlendi. Gizlemek için dokun."</string>
+    <string name="screen_end_failed">"Ekranı gösterme geçen sefer durdu çünkü telefonun kodlayıcısı hata verdi. Gizlemek için dokun."</string>
 </resources>
