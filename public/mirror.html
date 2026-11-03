@@ -11,37 +11,140 @@
     canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
     video { width: 100%; height: 100%; object-fit: contain; }
     [hidden] { display: none !important; }
+    /* The resize grip (grip.js): three short diagonal lines in the corner. */
+    .resize-grip {
+      position: fixed; right: 0; bottom: 0; width: 18px; height: 18px; z-index: 50; cursor: nwse-resize;
+      background: linear-gradient(135deg, transparent 0 55%, rgba(255,255,255,0.45) 55% 62%, transparent 62% 72%,
+        rgba(255,255,255,0.45) 72% 79%, transparent 79% 89%, rgba(255,255,255,0.45) 89% 96%, transparent 96%);
+      opacity: 0.6;
+    }
+    .resize-grip:hover { opacity: 1; }
     #status:empty { display: none; }
     #status {
       position: absolute; color: #ddd; font-size: 14px; text-align: center; margin: 0 16px;
       padding: 10px 14px; background: rgba(0, 0, 0, 0.75); border-radius: 8px;
     }
+    /* The theme's accent, set by the share page (share.js) */
+    :root { --accent: #f2c14e; --glass: rgba(22, 20, 17, 0.72); --line: rgba(255, 255, 255, 0.12); }
     .nav {
-      position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px;
-      opacity: 0.35; transition: opacity 0.2s;
+      position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px;
+      padding: 4px; border-radius: 999px; background: var(--glass); border: 1px solid var(--line);
+      backdrop-filter: blur(10px); opacity: 0.45; transition: opacity 0.2s;
     }
     .nav:hover { opacity: 1; }
     .nav[hidden] { display: none; }
+    .nav button { width: 44px; min-height: 36px; padding: 0; border-radius: 999px; font-size: 15px; }
     canvas.control { cursor: pointer; touch-action: none; }
     #stats {
       position: absolute; left: 8px; right: 8px; bottom: 6px; margin: 0; color: rgba(255, 255, 255, 0.55);
       font-size: 11px; text-shadow: 0 0 3px #000; pointer-events: none;
     }
     /* Wraps onto more lines in a narrow (portrait) window instead of running off it. */
+    /* One glass strip at the top that slides in when the mouse is over the
+       window: each button an icon over its name (like Ayva's rail), red Stop. */
     .bar {
-      position: absolute; top: 8px; left: 8px; right: 8px; display: flex; flex-wrap: wrap;
-      justify-content: flex-end; align-items: center; gap: 6px;
-      opacity: 0; transition: opacity 0.2s;
+      position: absolute; top: 10px; right: 10px; left: auto; max-width: calc(100% - 20px);
+      display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: stretch; gap: 4px;
+      padding: 6px; border-radius: 18px; background: var(--glass); border: 1px solid var(--line);
+      backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      opacity: 0; transform: translateY(-8px); transition: opacity 0.2s, transform 0.2s ease-out;
     }
-    body:hover .bar, .bar:focus-within { opacity: 1; }
-    .bar button, .bar select, .bar label, .nav button {
-      font: inherit; font-size: 12px; color: #fff; background: rgba(40, 36, 30, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; padding: 5px 8px; cursor: pointer;
+    /* Shown while the mouse moves over the window (share.js marks it idle after
+       a few still seconds), while its sound panel is open or a key moves through
+       it; never when the corner button has put the buttons away. */
+    body:hover:not(.idle) .bar, .bar:has(:focus-visible), .bar:has(.sound-pop:not([hidden])) { opacity: 1; transform: none; }
+    body.bar-off .bar, body.bar-off .nav { opacity: 0 !important; pointer-events: none; }
+    body.idle .nav { opacity: 0; }
+    body.idle { cursor: none; }
+    .bar { pointer-events: none; }
+    body:hover:not(.idle) .bar, .bar:has(:focus-visible), .bar:has(.sound-pop:not([hidden])) { pointer-events: auto; }
+    /* The corner button that puts the buttons away or brings them back. */
+    .bar-toggle {
+      position: absolute; top: 12px; left: 12px; z-index: 6; width: 36px; height: 36px; padding: 0;
+      border-radius: 50%; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); background: var(--glass); color: #fff; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px); opacity: 0; transition: opacity 0.2s, background-color 0.15s;
+      display: flex; align-items: center; justify-content: center;
     }
-    .bar select { max-width: 150px; }
-    .bar label { display: flex; align-items: center; gap: 6px; cursor: default; }
-    .bar input[type=range] { width: 90px; margin: 0; }
-    .bar button.stop { background: rgba(160, 40, 30, 0.9); }
+    body:hover:not(.idle) .bar-toggle { opacity: 0.85; }
+    /* With the buttons put away it stays findable: faint even when the mouse rests. */
+    body.bar-off:hover .bar-toggle { opacity: 0.6; }
+    .bar-toggle:hover, .bar-toggle:focus-visible { opacity: 1 !important; background: color-mix(in srgb, var(--accent) 25%, rgba(22, 20, 17, 0.8)); }
+    .bar-toggle::before {
+      content: ''; width: 18px; height: 18px; background: currentColor;
+      -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat;
+      --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.4 5.4A9 9 0 0 1 12 5c4 0 7.3 2.3 10 7-.8 1.4-1.7 2.6-2.6 3.6M6.6 6.6C4.8 7.8 3.3 9.6 2 12c2.7 4.7 6 7 10 7 1.6 0 3.1-.4 4.4-1.1'/></svg>");
+    }
+    body.bar-off .bar-toggle::before {
+      --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 12c2.7-4.7 6-7 10-7s7.3 2.3 10 7c-2.7 4.7-6 7-10 7s-7.3-2.3-10-7'/><circle cx='12' cy='12' r='3'/></svg>");
+    }
+    .bar button, .nav button {
+      display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+      width: 72px; min-height: 58px; padding: 8px 4px 7px; font: inherit; font-size: 11px; font-weight: 600;
+      line-height: 1.15; text-align: center; color: rgba(255, 255, 255, 0.82);
+      background: rgba(255, 255, 255, 0.04); border: 1px solid transparent; border-radius: 12px; cursor: pointer;
+      transition: background-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.1s;
+    }
+    .bar button:hover, .nav button:hover {
+      background: color-mix(in srgb, var(--accent) 18%, transparent); color: #fff;
+      border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+      box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 25%, transparent);
+    }
+    .bar button:active, .nav button:active { transform: scale(0.95); }
+    .bar button:focus-visible, .bar select:focus-visible, .nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .bar button::before {
+      content: ''; flex: none; width: 22px; height: 22px; background: currentColor;
+      -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat;
+    }
+    .bar button:hover::before { background: var(--accent); }
+    #ctlBtn { --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 7l10 4-4.2 1.8L11 17z'/><path d='M13 13l5 5'/></svg>"); }
+    #volBtn { --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M15 8a5 5 0 0 1 0 8M17.7 5a9 9 0 0 1 0 14M6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l3.5-4.5A.8.8 0 0 1 11 5v14a.8.8 0 0 1-1.5.5L6 15'/></svg>"); }
+    #volBtn.silent { --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l3.5-4.5A.8.8 0 0 1 11 5v14a.8.8 0 0 1-1.5.5L6 15M16 10l4 4m0-4l-4 4'/></svg>"); }
+    #volBtn[aria-expanded="true"] { background: color-mix(in srgb, var(--accent) 22%, transparent); color: #fff; }
+    #soundBtn { --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='11' height='9' rx='1.5'/><path d='M6 18h5M8.5 14v4'/><rect x='16' y='8' width='5' height='11' rx='1.2'/></svg>"); }
+    #fullBtn { --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v2M16 20h2a2 2 0 0 0 2-2v-2'/></svg>"); }
+    #stopBtn { --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'><rect x='6' y='6' width='12' height='12' rx='2'/></svg>"); }
+    .bar button.stop { color: #fff; background: #d93f44; }
+    .bar button.stop:hover { background: #e5484d; border-color: transparent; box-shadow: 0 0 16px rgba(229, 72, 77, 0.45); }
+    .bar button.stop:hover::before { background: #fff; }
+    .bar select {
+      align-self: center; font: inherit; font-size: 11.5px; font-weight: 600; color: rgba(255, 255, 255, 0.85);
+      border: 1px solid var(--line); border-radius: 10px; padding: 7px 26px 7px 10px; cursor: pointer;
+      -webkit-appearance: none; appearance: none; max-width: 150px;
+      background: transparent url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 8px center / 12px;
+      text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+    }
+    .bar select:hover { background-color: rgba(255, 255, 255, 0.1); }
+    .bar select option { background: #1e1b16; color: #eee; }
+    /* The sound panel under its button. */
+    .sound-box { position: relative; display: flex; }
+    .sound-pop {
+      position: absolute; top: calc(100% + 10px); left: 0; z-index: 5; width: 250px;
+      display: flex; flex-direction: column; gap: 10px; padding: 14px;
+      border-radius: 16px; background: rgba(22, 20, 17, 0.94); border: 1px solid var(--line);
+      backdrop-filter: blur(12px); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+    }
+    .sound-pop[hidden] { display: none; }
+    .pop-row { display: flex; align-items: center; gap: 12px; }
+    .pop-row input[type=range] { flex: 1; width: auto; }
+    #volumeValue { min-width: 44px; text-align: right; color: #fff; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .pop-label { color: rgba(255, 255, 255, 0.55); font-size: 11.5px; margin-bottom: -4px; }
+    .pop-label:has(+ select[hidden]) { display: none; }
+    .sound-pop select { max-width: none; width: 100%; align-self: stretch; }
+    .sound-pop #soundBtn {
+      flex-direction: row; justify-content: flex-start; width: 100%; min-height: 0; padding: 9px 10px;
+      font-size: 12px; gap: 10px; background: rgba(255, 255, 255, 0.06);
+    }
+    .sound-pop #soundBtn::before { width: 18px; height: 18px; }
+    /* A thin slider in the theme's colour. */
+    .bar input[type=range] {
+      -webkit-appearance: none; appearance: none; width: 90px; height: 4px; margin: 0; border-radius: 999px;
+      background: rgba(255, 255, 255, 0.22); cursor: pointer;
+    }
+    .bar input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 0;
+    }
+    .bar input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
     /* Pairing the phone for control (share.js, "Pairing the phone") */
     .panel {
       position: absolute; left: 12px; right: 12px; top: 50%; transform: translateY(-50%);
@@ -56,10 +159,10 @@
       color: #fff; background: #111; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 6px;
     }
     .panel button {
-      font: inherit; color: #fff; background: #8a5a12; border: 0; border-radius: 6px;
+      font: inherit; color: #1b1406; background: var(--accent); border: 0; border-radius: 10px; font-weight: 600;
       padding: 7px 12px; cursor: pointer; margin: 0 6px 6px 0;
     }
-    .panel button.secondary { background: rgba(255, 255, 255, 0.12); }
+    .panel button.secondary { background: rgba(255, 255, 255, 0.12); color: #fff; }
     .panel button:disabled { opacity: 0.5; cursor: default; }
     #adbMsg { color: #f0c27a; min-height: 1em; }
   </style>
@@ -92,12 +195,20 @@
     <p id="adbMsg"></p>
     <button id="adbClose" type="button" class="secondary"></button>
   </div>
+  <button id="barToggle" class="bar-toggle" type="button"></button>
   <div class="bar">
-    <!-- The phone's sound: how loud here (0-200 %), where it comes out, where it plays -->
-    <label id="volumeBox"><span id="volumeIcon">🔊</span><input id="volume" type="range" min="0" max="200" step="5"></label>
-    <select id="outputSel" hidden></select>
+    <!-- The phone's sound under one button: how loud here (0-200 %), which
+         speaker it comes out of, and whether the phone plays it too -->
+    <div id="volumeBox" class="sound-box">
+      <button id="volBtn" type="button"></button>
+      <div id="soundPop" class="sound-pop" hidden>
+        <div class="pop-row"><input id="volume" type="range" min="0" max="200" step="5"><span id="volumeValue"></span></div>
+        <label class="pop-label" id="outputLabel" for="outputSel"></label>
+        <select id="outputSel" hidden></select>
+        <button id="soundBtn" type="button"></button>
+      </div>
+    </div>
     <button id="ctlBtn" type="button" hidden></button>
-    <button id="soundBtn" type="button"></button>
     <button id="fullBtn" type="button"></button>
     <button id="stopBtn" type="button" class="stop"></button>
   </div>

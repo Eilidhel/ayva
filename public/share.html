@@ -6,166 +6,217 @@
   <title>Share · Ayva</title>
   <link rel="icon" href="/icon.svg">
   <link rel="stylesheet" href="/style.css">
+  <script src="/theme.js"></script>
 </head>
-<body>
-  <div class="wrap">
-    <div class="row spread">
-      <a class="logo" href="/" style="text-decoration:none">
-        <img src="/icon.svg" alt="" width="40" height="40">
-        <h1>Ayva</h1>
-      </a>
-      <div class="row">
+<body class="share-body">
+  <div class="shell">
+    <!-- Sections on the left; only the chosen one is shown (sharenav.js) -->
+    <nav class="side">
+      <!-- Not a link: in the desktop app there is no Back to return from another page -->
+      <div class="logo" title="Ayva">
+        <img src="/icon.svg" alt="Ayva" width="34" height="34">
+      </div>
+      <!-- Folds the rail to icons only, or opens it again -->
+      <button id="railToggle" class="rail-toggle" type="button"></button>
+      <button class="nav-btn" data-nav="share" data-i18n="navShare"></button>
+      <button class="nav-btn" data-nav="watch" data-i18n="navWatch"></button>
+      <button class="nav-btn" data-nav="devices" data-i18n="navDevices"></button>
+      <button class="nav-btn" data-nav="remote" data-i18n="navRemote"></button>
+      <button class="nav-btn" data-nav="history" data-i18n="navHistory"></button>
+      <button class="nav-btn nav-last" data-nav="settings" data-i18n="navSettings"></button>
+    </nav>
+
+    <main class="main">
+      <!-- Whether this computer is sharing, and to how many -->
+      <div class="topbar">
         <span id="liveBadge" class="badge"><span class="dot"></span><span id="liveText"></span></span>
-        <span class="badge"><span data-i18n="viewers"></span>: <span id="viewerCount">0</span></span>
+        <span class="badge viewers-badge"><span data-i18n="viewers"></span><span id="viewerCount" class="count">0</span></span>
       </div>
-    </div>
-
-    <div class="panel">
-      <div class="row spread">
-        <div class="muted small" data-i18n="yourCode"></div>
-        <button id="revealBtn" class="secondary small-btn" hidden></button>
-      </div>
-      <!-- Blurred while sharing, so the code can't be read off the stream -->
-      <div class="secret">
-        <div id="code" class="code">······</div>
-        <div class="muted small" style="margin-top:12px" data-i18n="openOnTv"></div>
-        <div id="links"></div>
-        <div class="muted small" data-i18n="orEnterCode"></div>
-      </div>
-
-      <!-- Fixed address on the user's Cloudflare account (desktop app only) -->
-      <div id="cloud" class="internet" hidden>
-        <div class="row">
-          <button id="cloudSetupBtn" class="secondary" data-i18n="cloudSetup"></button>
-          <span id="cloudState" class="muted small"></span>
+      <section data-section="share">
+        <div class="panel">
+          <div class="row">
+            <label class="muted" for="quality" data-i18n="quality"></label>
+            <select id="quality">
+              <option value="1440p60">1440p · 60 FPS</option>
+              <option value="1440p30">1440p · 30 FPS</option>
+              <option value="1080p60" selected>1080p · 60 FPS</option>
+              <option value="1080p30">1080p · 30 FPS</option>
+              <option value="720p60">720p · 60 FPS</option>
+              <option value="720p30">720p · 30 FPS</option>
+            </select>
+            <button id="startBtn" data-i18n="startShare"></button>
+            <button id="stopBtn" class="danger" data-i18n="stopShare" hidden></button>
+            <button id="switchBtn" class="secondary" data-i18n="switchSource" hidden></button>
+            <button id="controlBtn" class="secondary" hidden></button>
+            <!-- Less frequent actions while sharing -->
+            <details id="shareMore" class="menu">
+              <summary></summary>
+              <div class="menu-list">
+                <button id="sendFileBtn" class="secondary" data-i18n="sendFile" hidden></button>
+                <button id="sendClipBtn" class="secondary" data-i18n="sendClipboard" hidden></button>
+                <button id="privacyBtn" class="secondary" hidden></button>
+              </div>
+            </details>
+            <input id="sendFileInput" type="file" multiple hidden>
+          </div>
+          <div id="transferStatus" class="status small"></div>
+          <div id="controlHint" class="status small" hidden></div>
+          <div id="status" class="status"></div>
+          <div id="audioTip" class="status small" data-i18n="audioTip"></div>
+          <video id="preview" class="preview" autoplay muted playsinline></video>
         </div>
-        <div id="cloudBox" class="secret internet-box" hidden>
-          <img id="cloudQr" alt="" width="180" height="180">
-          <div>
-            <div class="muted small" data-i18n="cloudScan"></div>
-            <div><span id="cloudLink" class="link"></span></div>
+
+        <div class="panel">
+          <div class="row spread">
+            <div class="muted small" data-i18n="yourCode"></div>
+            <button id="revealBtn" class="secondary small-btn" hidden></button>
+          </div>
+          <!-- Blurred until "Show" (and again when sharing starts), so neither the
+               code nor this computer's address can be read off the screen or stream -->
+          <div class="secret always-secret">
+            <div id="code" class="code">······</div>
+            <div class="muted small" style="margin-top:12px" data-i18n="openOnTv"></div>
+            <div id="links"></div>
+            <div class="muted small" data-i18n="orEnterCode"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="muted small" data-i18n="devicesTitle"></div>
+          <div id="devices" class="devices"></div>
+        </div>
+
+        <div id="statsPanel" class="panel" hidden>
+          <div class="muted small" data-i18n="connectionInfo"></div>
+          <div id="stats"></div>
+        </div>
+      </section>
+
+      <!-- A connected phone's screen or camera here, asked from this side -->
+      <section data-section="watch" hidden>
+        <div class="panel">
+          <p class="muted small watch-hint" data-i18n="watchHint"></p>
+          <div id="watchList" class="devices"></div>
+          <p id="watchEmpty" class="muted small" data-i18n="watchEmpty"></p>
+        </div>
+      </section>
+
+      <section data-section="devices" hidden>
+        <div class="panel">
+          <label class="row small">
+            <input id="askApproval" class="switch" type="checkbox">
+            <span data-i18n="askApproval"></span>
+          </label>
+          <div id="trustedWrap" hidden>
+            <div class="muted small" style="margin-top:16px" data-i18n="trustedTitle"></div>
+            <div id="trusted" class="devices"></div>
+          </div>
+          <p class="muted small trusted-empty" data-i18n="noTrusted"></p>
+        </div>
+      </section>
+
+      <section data-section="remote" hidden>
+        <div class="panel remote-panel">
+          <div class="row reveal-row"><button id="revealRemoteBtn" class="secondary small-btn" hidden></button></div>
+          <!-- Fixed address on the user's Cloudflare account (desktop app only) -->
+          <div id="cloud" class="internet" hidden>
             <div class="row">
-              <button id="copyCloudBtn" class="secondary small-btn" data-i18n="copyLink"></button>
-              <button id="cloudRemoveBtn" class="secondary small-btn" data-i18n="cloudRemove"></button>
+              <button id="cloudSetupBtn" class="secondary" data-i18n="cloudSetup"></button>
+              <span id="cloudState" class="muted small"></span>
+            </div>
+            <div id="cloudBox" class="secret internet-box" hidden>
+              <img id="cloudQr" alt="" width="180" height="180">
+              <div>
+                <div class="muted small" data-i18n="cloudScan"></div>
+                <div><span id="cloudLink" class="link"></span></div>
+                <div class="row">
+                  <button id="copyCloudBtn" class="secondary small-btn" data-i18n="copyLink"></button>
+                  <button id="cloudRemoveBtn" class="secondary small-btn" data-i18n="cloudRemove"></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Backup route: Cloudflare TURN in the user's account (desktop app only) -->
+          <details id="turn" class="internet" hidden>
+            <summary class="muted small"><span data-i18n="turnTitle"></span> · <span id="turnState"></span></summary>
+            <div class="muted small" style="margin-top:8px" id="turnInfo"></div>
+            <form id="turnForm" class="turn-form" hidden>
+              <input id="turnKeyId" class="rename-input" autocomplete="off" spellcheck="false">
+              <input id="turnToken" class="rename-input" type="password" autocomplete="off">
+              <button id="turnSaveBtn" type="submit" class="small-btn" data-i18n="turnSave"></button>
+            </form>
+            <div id="turnSettings" hidden>
+              <label class="row small">
+                <input id="turnHideIp" type="checkbox">
+                <span data-i18n="turnHideIp"></span>
+              </label>
+              <label class="row small">
+                <span data-i18n="turnLimit"></span>
+                <input id="turnLimit" class="rename-input turn-limit" type="number" min="1" max="100000" step="1">
+              </label>
+              <button id="turnRemoveBtn" class="secondary small-btn" data-i18n="turnRemove"></button>
+            </div>
+            <div id="turnError" class="status small"></div>
+          </details>
+
+          <!-- Internet access (desktop app only) -->
+          <div id="internet" class="internet" hidden>
+            <div class="row">
+              <button id="internetBtn" class="secondary"></button>
+              <span id="internetStatus" class="muted small"></span>
+            </div>
+            <div id="internetBox" class="secret internet-box" hidden>
+              <img id="internetQr" alt="" width="180" height="180">
+              <div>
+                <div class="muted small" data-i18n="internetScan"></div>
+                <div><span id="internetLink" class="link"></span></div>
+                <button id="copyLinkBtn" class="secondary small-btn" data-i18n="copyLink"></button>
+                <div class="muted small" style="margin-top:8px" data-i18n="internetWarning"></div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Backup route: Cloudflare TURN in the user's account (desktop app only) -->
-      <details id="turn" class="internet" hidden>
-        <summary class="muted small"><span data-i18n="turnTitle"></span> · <span id="turnState"></span></summary>
-        <div class="muted small" style="margin-top:8px" id="turnInfo"></div>
-        <form id="turnForm" class="turn-form" hidden>
-          <input id="turnKeyId" class="rename-input" autocomplete="off" spellcheck="false">
-          <input id="turnToken" class="rename-input" type="password" autocomplete="off">
-          <button id="turnSaveBtn" type="submit" class="small-btn" data-i18n="turnSave"></button>
-        </form>
-        <div id="turnSettings" hidden>
-          <label class="row small">
-            <input id="turnHideIp" type="checkbox">
-            <span data-i18n="turnHideIp"></span>
-          </label>
-          <label class="row small">
-            <span data-i18n="turnLimit"></span>
-            <input id="turnLimit" class="rename-input turn-limit" type="number" min="1" max="100000" step="1">
-          </label>
-          <button id="turnRemoveBtn" class="secondary small-btn" data-i18n="turnRemove"></button>
+      <section data-section="history" hidden>
+        <div class="panel">
+          <details id="historyBox" open>
+            <summary class="muted small" data-i18n="historyTitle"></summary>
+            <div id="history" class="history"></div>
+            <button id="historyClear" class="secondary small-btn" data-i18n="historyClear" hidden></button>
+          </details>
         </div>
-        <div id="turnError" class="status small"></div>
-      </details>
+      </section>
 
-      <!-- Internet access (desktop app only) -->
-      <div id="internet" class="internet" hidden>
-        <div class="row">
-          <button id="internetBtn" class="secondary"></button>
-          <span id="internetStatus" class="muted small"></span>
-        </div>
-        <div id="internetBox" class="secret internet-box" hidden>
-          <img id="internetQr" alt="" width="180" height="180">
-          <div>
-            <div class="muted small" data-i18n="internetScan"></div>
-            <div><span id="internetLink" class="link"></span></div>
-            <button id="copyLinkBtn" class="secondary small-btn" data-i18n="copyLink"></button>
-            <div class="muted small" style="margin-top:8px" data-i18n="internetWarning"></div>
+      <section data-section="settings" hidden>
+        <div class="panel">
+          <!-- Version and updates (desktop app only) -->
+          <div id="updateRow" class="row small update-row" hidden>
+            <span id="updateText" class="muted"></span>
+            <button id="updateBtn" class="secondary small-btn" hidden></button>
+          </div>
+          <label id="startWithWindowsRow" class="row small" hidden>
+            <input id="startWithWindows" class="switch" type="checkbox">
+            <span data-i18n="startWithWindows"></span>
+          </label>
+          <!-- Where a phone's "Talk" plays: speakers, or a virtual cable for Discord -->
+          <div id="micOutRow" class="mic-out" hidden>
+            <label class="row small">
+              <span data-i18n="micOutput"></span>
+              <select id="micOutput"></select>
+            </label>
+            <div class="muted small" data-i18n="micOutputHint"></div>
+            <div id="echoState" class="muted small" hidden></div>
+            <button id="echoRecordBtn" class="secondary small-btn" data-i18n="echoRecord" hidden></button>
+          </div>
+          <div class="setting-row">
+            <span class="small" data-i18n="theme"></span>
+            <div id="themes" class="themes"></div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="row">
-        <label class="muted" for="quality" data-i18n="quality"></label>
-        <select id="quality">
-          <option value="1440p60">1440p · 60 FPS</option>
-          <option value="1440p30">1440p · 30 FPS</option>
-          <option value="1080p60" selected>1080p · 60 FPS</option>
-          <option value="1080p30">1080p · 30 FPS</option>
-          <option value="720p60">720p · 60 FPS</option>
-          <option value="720p30">720p · 30 FPS</option>
-        </select>
-        <button id="startBtn" data-i18n="startShare"></button>
-        <button id="stopBtn" class="danger" data-i18n="stopShare" hidden></button>
-        <button id="switchBtn" class="secondary" data-i18n="switchSource" hidden></button>
-        <button id="controlBtn" class="secondary" hidden></button>
-        <button id="privacyBtn" class="secondary" hidden></button>
-        <button id="sendFileBtn" class="secondary" data-i18n="sendFile" hidden></button>
-        <button id="sendClipBtn" class="secondary" data-i18n="sendClipboard" hidden></button>
-        <input id="sendFileInput" type="file" multiple hidden>
-      </div>
-      <div id="transferStatus" class="status small"></div>
-      <div id="controlHint" class="status small" hidden></div>
-      <div id="status" class="status"></div>
-      <div id="audioTip" class="status small" data-i18n="audioTip"></div>
-      <video id="preview" class="preview" autoplay muted playsinline></video>
-    </div>
-
-    <div class="panel">
-      <div class="row spread">
-        <div class="muted small" data-i18n="devicesTitle"></div>
-        <label class="row small">
-          <input id="askApproval" type="checkbox">
-          <span data-i18n="askApproval"></span>
-        </label>
-      </div>
-      <div id="devices" class="devices"></div>
-      <!-- Version and updates (desktop app only) -->
-      <div id="updateRow" class="row small update-row" hidden>
-        <span id="updateText" class="muted"></span>
-        <button id="updateBtn" class="secondary small-btn" hidden></button>
-      </div>
-      <label id="startWithWindowsRow" class="row small" style="margin-top:16px" hidden>
-        <input id="startWithWindows" type="checkbox">
-        <span data-i18n="startWithWindows"></span>
-      </label>
-      <!-- Where a phone's "Talk" plays: speakers, or a virtual cable for Discord -->
-      <div id="micOutRow" class="mic-out" hidden>
-        <label class="row small">
-          <span data-i18n="micOutput"></span>
-          <select id="micOutput"></select>
-        </label>
-        <div class="muted small" data-i18n="micOutputHint"></div>
-        <div id="echoState" class="muted small" hidden></div>
-        <button id="echoRecordBtn" class="secondary small-btn" data-i18n="echoRecord" hidden></button>
-      </div>
-      <div id="trustedWrap" hidden>
-        <div class="muted small" style="margin-top:16px" data-i18n="trustedTitle"></div>
-        <div id="trusted" class="devices"></div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <details id="historyBox">
-        <summary class="muted small" data-i18n="historyTitle"></summary>
-        <div id="history" class="history"></div>
-        <button id="historyClear" class="secondary small-btn" data-i18n="historyClear" hidden></button>
-      </details>
-    </div>
-
-    <div id="statsPanel" class="panel" hidden>
-      <div class="muted small" data-i18n="connectionInfo"></div>
-      <div id="stats"></div>
-    </div>
+      </section>
+    </main>
   </div>
 
   <!-- Fixed address setup -->
@@ -235,6 +286,8 @@
   </div>
 
   <script src="/common.js"></script>
+  <script src="/grip.js"></script>
   <script src="/share.js"></script>
+  <script src="/sharenav.js"></script>
 </body>
 </html>

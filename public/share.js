@@ -24,16 +24,22 @@ function setStatus(text, isError) {
   $('status').className = 'status' + (isError ? ' error' : '');
 }
 
-var revealed = false; // codes shown un-blurred while sharing
+// The code and this computer's addresses are blurred until "Show": from the
+// start (someone may see the screen, or it may be recorded), and again each
+// time sharing starts or stops. Remote access links are blurred while sharing.
+var revealed = false;
+var wasLive = false;
 
 function updateUi() {
   var live = !!stream;
   sendToHubs({ type: 'status', live: live });
-  if (!live) revealed = false;
+  if (live !== wasLive) revealed = false;
+  wasLive = live;
   document.body.classList.toggle('live', live);
   document.body.classList.toggle('revealed', revealed);
-  $('revealBtn').hidden = !live;
-  $('revealBtn').textContent = revealed ? t('hideCode') : t('showCode');
+  $('revealBtn').hidden = false;
+  $('revealRemoteBtn').hidden = !live;
+  $('revealBtn').textContent = $('revealRemoteBtn').textContent = revealed ? t('hideCode') : t('showCode');
   $('liveBadge').className = 'badge' + (live ? ' live' : '');
   $('liveText').textContent = live ? t('streaming') : t('offline');
   $('startBtn').hidden = live;
@@ -56,7 +62,10 @@ function updateUi() {
     $('controlHint').hidden = false;
     $('controlHint').textContent = t('privacyHint');
   }
-  $('viewerCount').textContent = Object.keys(viewers).length;
+  var watching = Object.keys(viewers).length;
+  $('viewerCount').textContent = watching;
+  // Glows green while someone is connected.
+  $('viewerCount').parentNode.classList.toggle('active', watching > 0);
   if (live) setStatus('');
   else if (signal && signal.ws && signal.ws.readyState === WebSocket.OPEN) setStatus(t('notStreaming'));
 }
@@ -575,6 +584,11 @@ function handleViewerSignal(id, data) {
     closeCamera(id, false);
     return;
   }
+  if (data.kind === 'screen-cant' || data.kind === 'camera-cant') {
+    watchNotes[id] = t(data.kind === 'screen-cant' ? 'watchCantScreen' : 'watchCantCamera');
+    renderWatch();
+    return;
+  }
   if (data.kind === 'screen-request') {
     mirrorRequest(id);
     return;
@@ -912,7 +926,73 @@ function startRename(row, name, actions, current, deviceId) {
   input.select();
 }
 
+// ---- Watch: asking a phone for its screen or camera ----
+// The "Watch" section lists connected devices that may show their screen or
+// camera here, with a button that asks the phone; the phone shows the question
+// and nothing starts without a tap there (Android asks once more for the
+// screen). The phone can still start either itself, as before.
+
+var watchNotes = {}; // viewer id -> what the last request came to
+
+function askPhone(id, kind) {
+  if (!viewerSignal[id]) return;
+  viaSignal(id).send({ type: 'signal', to: id, data: { kind: kind + '-ask' } });
+  watchNotes[id] = t('watchAsked');
+  renderWatch();
+}
+
+function renderWatch() {
+  var list = $('watchList');
+  if (!list) return;
+  list.innerHTML = '';
+  var ids = Object.keys(viewerInfo).filter(function (id) { return mayMirror(id) || mayCamera(id); });
+  $('watchEmpty').hidden = !!ids.length;
+  ids.forEach(function (id) {
+    var tags = [];
+    if (mirrors[id]) tags.push({ text: t('mirrorTag'), cls: 'alert' });
+    if (cameras[id]) tags.push({ text: t('cameraTag'), cls: 'alert' });
+    var row = document.createElement('div');
+    row.className = 'device watch-row';
+    var name = document.createElement('div');
+    name.className = 'device-name';
+    name.textContent = deviceLabel(viewerInfo[id]);
+    tags.forEach(function (tag) {
+      var span = document.createElement('span');
+      span.className = 'tag' + (tag.cls ? ' ' + tag.cls : '');
+      span.textContent = tag.text;
+      name.appendChild(span);
+    });
+    if (watchNotes[id] && !mirrors[id] && !cameras[id]) {
+      var note = document.createElement('div');
+      note.className = 'muted small';
+      note.textContent = watchNotes[id];
+      name.appendChild(note);
+    }
+    var actions = document.createElement('div');
+    actions.className = 'row';
+    var button = function (text, cls, onClick) {
+      var b = document.createElement('button');
+      b.className = cls + ' small-btn';
+      b.textContent = text;
+      b.onclick = onClick;
+      actions.appendChild(b);
+    };
+    if (mayMirror(id)) {
+      if (mirrors[id]) button(t('watchStopScreen'), 'danger', function () { closeMirror(id, true, null, 'stop-button'); });
+      else button(t('watchAskScreen'), 'secondary', function () { askPhone(id, 'screen'); });
+    }
+    if (mayCamera(id)) {
+      if (cameras[id]) button(t('watchStopCamera'), 'danger', function () { closeCamera(id, true); });
+      else button(t('watchAskCamera'), 'secondary', function () { askPhone(id, 'camera'); });
+    }
+    row.appendChild(name);
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+}
+
 function renderDevices() {
+  renderWatch();
   var list = $('devices');
   list.innerHTML = '';
   var ids = Object.keys(viewerInfo);
@@ -943,34 +1023,78 @@ function renderDevices() {
     var tags = d.key ? (d.pin ? [{ text: t('pinTag') }] : []) : [{ text: t('needsReapproval'), cls: 'alert' }];
     if (d.adbSerial) tags.push({ text: t('adbPairedTag').replace('{model}', d.adbModel || '') });
     var row = deviceRow(deviceNames[d.id] || d.name, tags, t('forget'), function () { forget(d.id); }, d.id);
-    if (d.key) {
-      var actions = row.querySelector('.row');
-      var pinBtn = document.createElement('button');
-      pinBtn.className = 'secondary small-btn';
-      pinBtn.textContent = 'PIN';
-      pinBtn.title = t('pinHint');
-      pinBtn.onclick = function () { startPinEdit(row, d); };
-      actions.prepend(pinBtn);
-      if (window.ayva) actions.prepend(permissionBox(d, 'canCamera'));
-      if (window.ayva && typeof VideoDecoder !== 'undefined') {
-        if (PHONE_CONTROL && d.canMirror) actions.prepend(permissionBox(d, 'canControlPhone'));
-        actions.prepend(permissionBox(d, 'canMirror'));
-      }
-      if (controlSupported) actions.prepend(permissionBox(d, 'canControl'));
-      if (window.ayva && window.ayva.remoteStart) actions.prepend(permissionBox(d, 'canStart'));
-    }
+    if (d.key) deviceCard(row, d);
     tl.appendChild(row);
   });
 }
 
-// A per-device permission tick box: 'canStart', 'canControl', 'canMirror', 'canControlPhone' or 'canCamera'.
+// A remembered device's rights, PIN and Forget, folded under one button so
+// the list stays short; the rights are grouped by where they act.
+var openCards = {}; // device id -> rights shown (kept across re-renders)
+
+function deviceCard(row, d) {
+  var open = !!openCards[d.id];
+  row.classList.add('device-card');
+  var actions = row.querySelector('.row');
+  var forgetBtn = actions.lastChild;
+  var toggle = document.createElement('button');
+  toggle.className = 'secondary small-btn card-toggle';
+  toggle.textContent = t('deviceMore');
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  toggle.onclick = function () {
+    openCards[d.id] = !open;
+    renderDevices();
+  };
+  actions.replaceChild(toggle, forgetBtn);
+
+  var body = document.createElement('div');
+  body.className = 'card-body';
+  body.hidden = !open;
+  var group = function (title, keys) {
+    if (!keys.length) return;
+    var box = document.createElement('div');
+    box.className = 'rights';
+    var head = document.createElement('div');
+    head.className = 'muted small rights-title';
+    head.textContent = title;
+    box.appendChild(head);
+    keys.forEach(function (key) { box.appendChild(permissionBox(d, key)); });
+    body.appendChild(box);
+  };
+  var here = [];
+  if (window.ayva && window.ayva.remoteStart) here.push('canStart');
+  if (controlSupported) here.push('canControl');
+  group(t('rightsOnComputer'), here);
+  var shows = [];
+  if (window.ayva && typeof VideoDecoder !== 'undefined') {
+    shows.push('canMirror');
+    if (PHONE_CONTROL && d.canMirror) shows.push('canControlPhone');
+  }
+  if (window.ayva) shows.push('canCamera');
+  group(t('rightsShowsHere'), shows);
+
+  var foot = document.createElement('div');
+  foot.className = 'row pin-actions';
+  var pinBtn = document.createElement('button');
+  pinBtn.className = 'secondary small-btn';
+  pinBtn.textContent = 'PIN';
+  pinBtn.title = t('pinHint');
+  pinBtn.onclick = function () { startPinEdit(row, d); };
+  forgetBtn.classList.add('forget');
+  foot.appendChild(pinBtn);
+  foot.appendChild(forgetBtn);
+  body.appendChild(foot);
+  row.appendChild(body);
+}
+
+// A per-device permission switch: 'canStart', 'canControl', 'canMirror', 'canControlPhone' or 'canCamera'.
 function permissionBox(d, key) {
   var label = document.createElement('label');
-  label.className = 'row small';
-  label.style.gap = '6px';
+  label.className = 'row small right';
   label.title = t(key + 'Hint');
   var box = document.createElement('input');
   box.type = 'checkbox';
+  box.className = 'switch';
   box.checked = !!d[key];
   box.onchange = function () { setPermission(d.id, key, box.checked); };
   var text = document.createElement('span');
@@ -1127,7 +1251,7 @@ function startPinEdit(row, d) {
     if (e.key === 'Enter') done();
     else if (e.key === 'Escape') renderDevices();
   };
-  var actions = row.querySelector('.row');
+  var actions = row.querySelector('.pin-actions') || row.querySelector('.row');
   actions.innerHTML = '';
   actions.appendChild(input);
   actions.appendChild(save);
@@ -1340,7 +1464,7 @@ function closeMic(id) {
 // (mirror.html); closing the window ends it. A notification every time.
 
 var mirrors = {}; // viewer id -> { pc, dc, win, canvas, decoder, sps, ... }
-var mirrorWindows = {}; // device id -> its last window, which stays open saying why it ended
+var mirrorWindows = {}; // device id -> its last window, which says for a moment why it ended
 var MIRROR_MAX_FRAME = 8 * 1024 * 1024;
 var MIRROR_END = {
   phone: 'mirrorEndPhone', notification: 'mirrorEndNotification', system: 'mirrorEndSystem', locked: 'mirrorEndLocked',
@@ -1501,6 +1625,8 @@ function mirrorWindowReady(id, m, title) {
     m.ctx = m.canvas.getContext('2d');
     m.status = doc.getElementById('status');
     if (!m.decoder || m.decoder.state !== 'configured') m.status.textContent = t('mirrorWaiting');
+    addResizeGrip(m.win);
+    wireMirrorChrome(m.win);
     doc.getElementById('stopBtn').textContent = t('mirrorStop');
     m.stats = doc.getElementById('stats');
     doc.getElementById('stopBtn').onclick = function () {
@@ -2063,12 +2189,59 @@ function mirrorVolume() {
   return storageGet(MIRROR_VOLUME_KEY) !== null && v >= 0 && v <= 200 ? v : 100;
 }
 
+// A phone's window keeps its buttons out of the way: they fade after a few
+// still seconds (with the pointer), and the faint corner button puts them
+// away until it is pressed again (remembered for the next window).
+var MIRROR_BAR_KEY = 'ayva-mirror-bar-off';
+
+function wireMirrorChrome(win) {
+  var doc = win.document;
+  var body = doc.body;
+  var timer = null;
+  var wake = function () {
+    body.classList.remove('idle');
+    win.clearTimeout(timer);
+    timer = win.setTimeout(function () { body.classList.add('idle'); }, 3000);
+  };
+  ['mousemove', 'mousedown', 'keydown', 'wheel'].forEach(function (ev) { doc.addEventListener(ev, wake); });
+  wake();
+  var toggle = doc.getElementById('barToggle');
+  var set = function (off) {
+    body.classList.toggle('bar-off', off);
+    toggle.title = t(off ? 'showUi' : 'hideUi');
+    toggle.setAttribute('aria-label', toggle.title);
+  };
+  toggle.onclick = function () {
+    var off = !body.classList.contains('bar-off');
+    storageSet(MIRROR_BAR_KEY, off ? '1' : '0');
+    set(off);
+  };
+  set(storageGet(MIRROR_BAR_KEY) === '1');
+}
+
 function wireMirrorVolume(m, doc) {
   var slider = doc.getElementById('volume');
+  var button = doc.getElementById('volBtn');
+  var pop = doc.getElementById('soundPop');
   var show = function () {
-    slider.title = slider.value + ' %';
-    doc.getElementById('volumeIcon').textContent = Number(slider.value) === 0 ? '🔇' : '🔊';
+    var v = Number(slider.value);
+    var text = LANG === 'tr' ? '%' + v : v + ' %';
+    doc.getElementById('volumeValue').textContent = text;
+    button.textContent = t('mirrorSoundMenu');
+    button.title = t('mirrorSoundMenu') + ': ' + text;
+    button.classList.toggle('silent', v === 0);
   };
+  // The panel opens under its button and closes on a click elsewhere or Esc.
+  var open = function (on) {
+    pop.hidden = !on;
+    button.setAttribute('aria-expanded', on ? 'true' : 'false');
+  };
+  button.onclick = function () { open(pop.hidden); };
+  doc.addEventListener('mousedown', function (e) {
+    if (!pop.hidden && !doc.getElementById('volumeBox').contains(e.target)) open(false);
+  });
+  doc.addEventListener('keydown', function (e) { if (e.key === 'Escape') open(false); });
+  doc.getElementById('outputLabel').textContent = t('mirrorSpeaker');
   slider.value = String(mirrorVolume());
   show();
   slider.oninput = function () {
@@ -2227,8 +2400,15 @@ function closeMirror(id, tell, reason, cause) {
   if (!m.win.closed) {
     if (m.statsTimer) m.win.clearInterval(m.statsTimer);
     if (reason && m.status) {
+      // Why it ended, for a moment; then the window goes by itself (the
+      // history keeps the reason), unless a new showing took it over.
       m.status.textContent = t(MIRROR_END[reason] || 'mirrorEndConnection');
       m.win.document.getElementById('stopBtn').textContent = t('mirrorClose');
+      var win = m.win;
+      setTimeout(function () {
+        var inUse = Object.keys(mirrors).some(function (k) { return mirrors[k].win === win; });
+        if (!win.closed && !inUse) win.close();
+      }, 3000);
     } else {
       m.win.close();
     }
@@ -2344,6 +2524,8 @@ function cameraWindowReady(id, c, title) {
     var status = doc.getElementById('status');
     status.textContent = t('mirrorWaiting');
     c.video.addEventListener('playing', function () { status.textContent = ''; });
+    addResizeGrip(c.win);
+    wireMirrorChrome(c.win);
     doc.getElementById('stopBtn').textContent = t('mirrorStop');
     doc.getElementById('stopBtn').onclick = function () { closeCamera(id, true); };
     var full = function () {
@@ -2948,6 +3130,7 @@ function viewerLeft(id) {
   if (info) logEvent('left', info, Date.now() - info.joinedAt);
   dropTurn(id);
   delete connectSeq[id];
+  delete watchNotes[id];
   delete orphaned[id];
   dropRequest(id);
   closeMic(id);
@@ -3339,7 +3522,7 @@ $('sendClipBtn').onclick = sendClipboard;
 $('stopBtn').onclick = stopSharing;
 $('pickerCancel').onclick = function () { $('picker').hidden = true; };
 $('controlBtn').onclick = function () { setControl(!controlOn); };
-$('revealBtn').onclick = function () {
+$('revealBtn').onclick = $('revealRemoteBtn').onclick = function () {
   revealed = !revealed;
   updateUi();
 };

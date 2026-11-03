@@ -282,6 +282,10 @@ var Mirror = (function () {
       stop(t('mirrorRefused'));
     } else if (data.kind === 'screen-stop') {
       stop(t('mirrorEnded'));
+    } else if (data.kind === 'screen-ask') {
+      // Asked from the computer's Watch section: only the Ayva app can, and only with the right.
+      if (!bridge || !allowed) send({ kind: 'screen-cant' });
+      else if (state === 'off') askFromComputer(t('askScreen'), start);
     }
   }
 

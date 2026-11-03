@@ -115,6 +115,43 @@ function notice(text) {
   noticeTimer = setTimeout(function () { el.hidden = true; }, 4000);
 }
 
+// The computer asks this phone to show its screen or camera (its "Watch"
+// section). Nothing starts without a tap here, and Android asks once more
+// for the screen. The question goes away by itself after a minute.
+function askFromComputer(text, yes) {
+  var old = $('askCard');
+  if (old) old.remove();
+  var card = document.createElement('div');
+  card.id = 'askCard';
+  card.className = 'ask-card';
+  var p = document.createElement('p');
+  p.textContent = text;
+  var row = document.createElement('div');
+  row.className = 'row';
+  var ok = document.createElement('button');
+  ok.type = 'button';
+  ok.textContent = t('askShow');
+  var no = document.createElement('button');
+  no.type = 'button';
+  no.className = 'secondary';
+  no.textContent = t('askNo');
+  row.appendChild(ok);
+  row.appendChild(no);
+  card.appendChild(p);
+  card.appendChild(row);
+  document.body.appendChild(card);
+  var timer = setTimeout(function () { card.remove(); }, 60000);
+  ok.onclick = function () {
+    clearTimeout(timer);
+    card.remove();
+    yes();
+  };
+  no.onclick = function () {
+    clearTimeout(timer);
+    card.remove();
+  };
+}
+
 function showVideo() {
   $('entry').classList.add('hidden');
   $('waiting').classList.add('hidden');

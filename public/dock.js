@@ -62,29 +62,5 @@
 
   // ---- Colour themes ----
 
-  var SWATCH = { quince: '#f2c14e', sea: '#5cb3f0', leaf: '#8fd17c', plum: '#c49af2', rose: '#f29a8a', light: '#f7f3ea' };
-  var row = $('themes');
-  AyvaTheme.names.forEach(function (name) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'swatch';
-    b.style.background = SWATCH[name];
-    b.title = t('theme_' + name);
-    b.setAttribute('aria-label', t('theme_' + name));
-    b.onclick = function () {
-      AyvaTheme.set(name);
-      markTheme();
-    };
-    b.dataset.theme = name;
-    row.appendChild(b);
-  });
-
-  function markTheme() {
-    var now = AyvaTheme.get();
-    Array.prototype.forEach.call(row.children, function (b) {
-      b.classList.toggle('on', b.dataset.theme === now);
-      b.setAttribute('aria-pressed', b.dataset.theme === now ? 'true' : 'false');
-    });
-  }
-  markTheme();
+  AyvaTheme.picker($('themes'));
 })();

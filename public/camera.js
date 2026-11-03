@@ -137,6 +137,10 @@ var Camera = (function () {
       stop(t('cameraRefused'));
     } else if (data.kind === 'camera-stop') {
       stop(t('cameraEnded'));
+    } else if (data.kind === 'camera-ask') {
+      // Asked from the computer's Watch section.
+      if (!supported() || !allowed) send({ kind: 'camera-cant' });
+      else if (state === 'off') askFromComputer(t('askCamera'), start);
     }
   }
 

@@ -122,20 +122,26 @@
 
   <!-- Waiting / connecting -->
   <div id="waiting" class="overlay hidden">
-    <div class="spinner"></div>
-    <p id="waitingText" class="muted"></p>
-    <!-- What the connection is doing, when it takes long (for troubleshooting) -->
-    <p id="waitingDetail" class="muted small"></p>
-    <p id="waitingCodeRow" class="muted small"><span id="waitingCodeLabel" data-i18n="yourCode"></span>: <span id="waitingCode"></span></p>
-    <!-- Remembered devices may start the share from here, if the computer allows it -->
-    <button id="remoteStartBtn" data-i18n="startShare" hidden></button>
-    <button id="unlockBtn" class="secondary" data-i18n="pinUnlock" hidden></button>
-    <!-- The Android app can show this phone's screen on the computer (screen.js) -->
-    <button id="screenWaitBtn" class="secondary" data-i18n="mirrorOn" hidden></button>
-    <button id="batteryWaitBtn" class="secondary" data-i18n="batteryFix" hidden></button>
-    <!-- This phone's camera on the computer (camera.js) -->
-    <button id="cameraWaitBtn" class="secondary" data-i18n="cameraOn" hidden></button>
-    <button id="cameraFlipWaitBtn" class="secondary" data-i18n="cameraFlip" hidden></button>
+    <div class="wait-card">
+      <div class="wait-hero">
+        <div class="spinner"></div>
+        <p id="waitingText"></p>
+        <!-- What the connection is doing, when it takes long (for troubleshooting) -->
+        <p id="waitingDetail" class="muted small"></p>
+        <p id="waitingCodeRow" class="code-chip"><span id="waitingCodeLabel" data-i18n="yourCode"></span> <span id="waitingCode"></span></p>
+      </div>
+      <!-- Remembered devices may start the share from here, if the computer allows it -->
+      <button id="remoteStartBtn" class="wait-main" data-i18n="startShare" hidden></button>
+      <button id="unlockBtn" class="secondary wait-main" data-i18n="pinUnlock" hidden></button>
+      <!-- This phone's screen (screen.js, Android app) and camera (camera.js) on the computer -->
+      <div class="wait-tiles">
+        <button id="screenWaitBtn" class="secondary" data-i18n="mirrorOn" hidden></button>
+        <button id="cameraWaitBtn" class="secondary" data-i18n="cameraOn" hidden></button>
+        <button id="cameraFlipWaitBtn" class="secondary" data-i18n="cameraFlip" hidden></button>
+      </div>
+      <!-- Battery saving may close the app in the background: a warning, not an action -->
+      <button id="batteryWaitBtn" class="secondary wait-warn" data-i18n="batteryFix" hidden></button>
+    </div>
   </div>
 
   <!-- PIN the computer asks for before this device may start sharing or control -->
