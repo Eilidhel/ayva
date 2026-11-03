@@ -204,6 +204,8 @@ Android uygulamasında bilgisayara bağlan (bilgisayarın paylaşım yapıyor ol
 
 **Buradan kontrol edilebilir** işaretliyse telefonun penceresinde fare parmak gibi çalışır: tıklamak dokunur, sürüklemek kaydırır, sağ tık Geri'dir, tekerlek kaydırır. Pencerenin altında **Geri**, **Ana ekran** ve **Son uygulamalar** butonları var.
 
+Telefonun penceresi öndeyken bilgisayarın klavyesi telefona yazar: harfler ve işaretler, Enter, Backspace, Delete, Tab, ok tuşları (Shift ile seçim), Home/End ve Ctrl+A/C/X/Z/Y. **Ctrl+V** bilgisayarın panosundakini telefona yapıştırır. Android'de tuşu olmayan karakterler (ş, ğ ya da emoji gibi) telefonun panosu üzerinden yapıştırılır, bu yüzden telefon bunlar için "kopyalandı" önizlemesi gösterebilir.
+
 Android, bir uygulamanın başka uygulamalara dokunmasına yalnızca erişilebilirlik hizmetiyle izin verir; Google Play Protect de Play Store dışından kurulan böyle uygulamaları engeller. Bu yüzden Ayva bunun yerine Android'in **Kablosuz hata ayıklama** özelliğini kullanır, [scrcpy](https://github.com/Genymobile/scrcpy) gibi. Kurulumu bir kez, birkaç dakika sürer:
 
 1. Telefonun penceresinde **Kontrolü ayarla**'ya, sonra **adb'yi Google'dan indir**'e bas. Google'ın `adb` aracı (yaklaşık 7 MB) Ayva'yla birlikte dağıtılamadığı için, sen isteyince Google'dan Ayva'nın kendi klasörüne indirilir.

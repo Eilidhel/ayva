@@ -206,6 +206,8 @@ Tap **Show my camera** (and **Switch camera** for the front one). The camera is 
 
 With **Can be controlled from here** ticked, the mouse works like a finger in the phone's window: click to tap, drag to swipe, right-click for Back, and the wheel scrolls. **Back**, **Home** and **Recents** buttons sit at the bottom of the window.
 
+The computer's keyboard types on the phone while its window is in front: letters and signs, Enter, Backspace, Delete, Tab, the arrow keys (with Shift to select), Home/End and Ctrl+A/C/X/Z/Y. **Ctrl+V** pastes the computer's clipboard on the phone. Characters Android has no key for (such as ş, ğ or emoji) are pasted through the phone's clipboard, so the phone may show its "copied" preview for them.
+
 Android lets an app touch other apps only through an accessibility service, and Google Play Protect blocks such apps when they are not installed from the Play Store. So Ayva uses Android's **Wireless debugging** instead, the same way [scrcpy](https://github.com/Genymobile/scrcpy) does. Setting it up takes a few minutes, once:
 
 1. In the phone's window press **Set up control**, then **Download adb from Google**. Google's `adb` tool (about 7 MB) may not be shipped with Ayva, so it is downloaded from Google into Ayva's own folder when you ask.

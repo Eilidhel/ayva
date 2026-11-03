@@ -24,7 +24,7 @@ const APP_ID = 'io.github.ayva.tv';
 
 const HOST = /^(\d{1,3}\.){3}\d{1,3}$/;
 const SERIAL = /^[A-Za-z0-9._:-]{1,64}$/;
-const INPUT_LINE = /^((down|move|up) [01](\.\d{1,6})? [01](\.\d{1,6})?|scroll [01](\.\d{1,6})? [01](\.\d{1,6})? -?\d{1,2}(\.\d{1,3})?|key (back|home|recents))$/;
+const INPUT_LINE = /^((down|move|up) [01](\.\d{1,6})? [01](\.\d{1,6})?|scroll [01](\.\d{1,6})? [01](\.\d{1,6})? -?\d{1,2}(\.\d{1,3})?|key (back|home|recents|enter|del|fdel|tab|up|down|left|right|mhome|mend|pgup|pgdn|a|c|x|z|y)( ctrl)?( shift)?|(text|paste) [A-Za-z0-9+/]{1,16384}={0,2})$/;
 
 class Adb {
   constructor(dataDir) {

@@ -1587,10 +1587,62 @@ function wireMirrorControl(id, m, doc) {
       btn.title = t(b[2]);
       btn.onclick = function () { mirrorControl(id, m, 'key ' + b[1]); };
     });
+  wireMirrorKeyboard(id, m, doc);
   doc.getElementById('ctlBtn').textContent = t('adbSetUp');
   doc.getElementById('ctlBtn').onclick = function () { openAdbPanel(id, m); };
   doc.getElementById('adbClose').onclick = function () { doc.getElementById('adbPanel').hidden = true; };
   startMirrorControl(id, m);
+}
+
+// The computer's keyboard types on the phone while its window has focus:
+// characters as text (InputServer turns them into key presses, or pastes
+// what has no key, such as ş or ğ), editing keys and Ctrl shortcuts by name.
+// Ctrl+V pastes this computer's clipboard there. Keys stay with the window's
+// own fields (pairing form, volume, output).
+var MIRROR_KEYS = {
+  Enter: 'enter', Backspace: 'del', Delete: 'fdel', Tab: 'tab',
+  ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+  Home: 'mhome', End: 'mend', PageUp: 'pgup', PageDown: 'pgdn',
+};
+var MIRROR_CTRL_KEYS = { a: 'a', c: 'c', x: 'x', z: 'z', y: 'y' };
+
+function base64Utf8(text) {
+  var bytes = new TextEncoder().encode(text);
+  var s = '';
+  for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+
+function wireMirrorKeyboard(id, m, doc) {
+  var forPhone = function (e) {
+    var tag = e.target && e.target.tagName;
+    return mirrors[id] === m && mayControlPhone(id) && !!m.adbReady
+      && tag !== 'INPUT' && tag !== 'SELECT' && tag !== 'TEXTAREA';
+  };
+  doc.addEventListener('keydown', function (e) {
+    if (!forPhone(e) || e.isComposing || e.metaKey) return;
+    // AltGr arrives as Ctrl+Alt with the character it makes (@, € ...).
+    var ctrl = e.ctrlKey && !e.altKey;
+    var line = null;
+    if (ctrl && e.key.toLowerCase() === 'v') return; // the paste event below
+    if (ctrl && MIRROR_CTRL_KEYS[e.key.toLowerCase()]) {
+      line = 'key ' + MIRROR_CTRL_KEYS[e.key.toLowerCase()] + ' ctrl' + (e.shiftKey ? ' shift' : '');
+    } else if (MIRROR_KEYS[e.key] && !e.altKey) {
+      line = 'key ' + MIRROR_KEYS[e.key] + (ctrl ? ' ctrl' : '') + (e.shiftKey ? ' shift' : '');
+    } else if (!ctrl && Array.from(e.key).length === 1) {
+      line = 'text ' + base64Utf8(e.key);
+    }
+    if (!line) return;
+    e.preventDefault();
+    if (e.target && e.target.tagName === 'BUTTON') e.target.blur();
+    mirrorControl(id, m, line);
+  });
+  doc.addEventListener('paste', function (e) {
+    if (!forPhone(e)) return;
+    var text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+    e.preventDefault();
+    if (text) mirrorControl(id, m, 'paste ' + base64Utf8(text.slice(0, 3000)));
+  });
 }
 
 // The device's pairing, kept with it among the remembered devices.
