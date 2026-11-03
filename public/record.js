@@ -31,7 +31,7 @@ var Recorder = (function () {
 
   function update() {
     btn.hidden = !supported || !(rec || hasPicture());
-    btn.textContent = rec ? '● ' + t('recordStop') + ' ' + elapsed() : t('record');
+    btn.textContent = rec ? t('recordStop') + ' ' + elapsed() : t('record');
     btn.className = rec ? 'danger' : 'secondary';
   }
 

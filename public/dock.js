@@ -1,0 +1,90 @@
+// The watch page's bottom bar and its "More" sheet. The few things used while
+// watching stay in the bar (keyboard, talk, send); the rest is grouped in the
+// sheet. What is running (a recording, this phone's screen or camera on the
+// computer, a darkened computer screen) shows as a chip at the top, and a tap
+// on the chip stops it. The buttons themselves keep their ids and are still
+// driven by their own scripts (record.js, screen.js, camera.js, watch.js).
+
+(function () {
+  var sheet = $('moreSheet');
+
+  function setOpen(open) {
+    sheet.hidden = !open;
+    document.body.classList.toggle('more-open', open);
+  }
+
+  $('moreBtn').onclick = function () { setOpen(sheet.hidden); };
+  $('moreBackdrop').onclick = function () { setOpen(false); };
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !sheet.hidden) setOpen(false);
+  });
+  // An action closes the sheet; picking a colour or opening the screen list doesn't.
+  sheet.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null;
+    if (b && !b.closest('.themes')) setOpen(false);
+  });
+  $('screenSelect').addEventListener('change', function () { setOpen(false); });
+
+  // ---- Chips for what is running ----
+
+  var CHIPS = [
+    ['recordBtn', 'chipRecording'],
+    ['screenBtn', 'chipScreen'],
+    ['cameraBtn', 'chipCamera'],
+    ['privacyBtn', 'chipPrivacy'],
+  ];
+  var box = $('chips');
+
+  function renderChips() {
+    box.innerHTML = '';
+    CHIPS.forEach(function (c) {
+      var b = $(c[0]);
+      if (!b || b.hidden || !b.classList.contains('danger')) return;
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip';
+      // The recording's running time, from the button ("● Stop recording 1:23").
+      var time = /(\d+:\d\d)\s*$/.exec(b.textContent);
+      chip.textContent = t(c[1]) + (time ? ' ' + time[1] : '');
+      chip.title = b.textContent;
+      chip.setAttribute('aria-label', b.textContent);
+      chip.onclick = function () { b.click(); };
+      box.appendChild(chip);
+    });
+  }
+
+  var watcher = new MutationObserver(renderChips);
+  CHIPS.forEach(function (c) {
+    var b = $(c[0]);
+    if (b) watcher.observe(b, { attributes: true, childList: true, characterData: true, subtree: true });
+  });
+  renderChips();
+
+  // ---- Colour themes ----
+
+  var SWATCH = { quince: '#f2c14e', sea: '#5cb3f0', leaf: '#8fd17c', plum: '#c49af2', rose: '#f29a8a', light: '#f7f3ea' };
+  var row = $('themes');
+  AyvaTheme.names.forEach(function (name) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'swatch';
+    b.style.background = SWATCH[name];
+    b.title = t('theme_' + name);
+    b.setAttribute('aria-label', t('theme_' + name));
+    b.onclick = function () {
+      AyvaTheme.set(name);
+      markTheme();
+    };
+    b.dataset.theme = name;
+    row.appendChild(b);
+  });
+
+  function markTheme() {
+    var now = AyvaTheme.get();
+    Array.prototype.forEach.call(row.children, function (b) {
+      b.classList.toggle('on', b.dataset.theme === now);
+      b.setAttribute('aria-pressed', b.dataset.theme === now ? 'true' : 'false');
+    });
+  }
+  markTheme();
+})();

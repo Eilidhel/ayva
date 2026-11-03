@@ -14,6 +14,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/style.css">
+  <script src="/theme.js"></script>
 </head>
 <body class="watch-body">
   <!-- No picture-in-picture / AirPlay buttons from the browser on top of the stream -->
@@ -40,23 +41,53 @@
   <!-- Brings the controls back after "Hide buttons" -->
   <button id="showUiBtn" class="show-ui" aria-label="" hidden>⋯</button>
 
+  <!-- What is running (recording, this phone's screen or camera...): a tap stops it (dock.js) -->
+  <div id="chips" class="chips"></div>
+
+  <!-- The bar: only what is used while watching; the rest is under "More" -->
   <div class="controls">
-    <button id="hideUiBtn" class="secondary" data-i18n="hideUi"></button>
-    <button id="sendBtn" class="secondary" data-i18n="send"></button>
-    <button id="micBtn" class="secondary" data-i18n="micOn" hidden></button>
-    <button id="screenBtn" class="secondary" data-i18n="mirrorOn" hidden></button>
-    <button id="batteryBtn" class="secondary" data-i18n="batteryFix" hidden></button>
-    <button id="cameraBtn" class="secondary" data-i18n="cameraOn" hidden></button>
-    <button id="cameraFlipBtn" class="secondary" data-i18n="cameraFlip" hidden></button>
-    <button id="recordBtn" class="secondary" data-i18n="record" hidden></button>
-    <button id="remoteStopBtn" class="secondary" data-i18n="stopShare" hidden></button>
-    <select id="screenSelect" class="secondary" hidden></select>
-    <button id="privacyBtn" class="secondary" hidden></button>
-    <button id="pinBtn" class="secondary" data-i18n="pinUnlock" hidden></button>
-    <button id="kbBtn" class="secondary" data-i18n="keyboard"></button>
-    <button id="unmuteBtn" data-i18n="unmute" hidden></button>
-    <button id="fullscreenBtn" class="secondary" data-i18n="fullscreen"></button>
-    <button id="changeBtn" class="secondary" data-i18n="change"></button>
+    <div class="dock">
+      <button id="unmuteBtn" data-i18n="unmute" hidden></button>
+      <button id="kbBtn" class="secondary" data-i18n="keyboard"></button>
+      <button id="micBtn" class="secondary" data-i18n="micOn" hidden></button>
+      <button id="sendBtn" class="secondary" data-i18n="send"></button>
+      <button id="moreBtn" class="secondary" data-i18n="more"></button>
+    </div>
+  </div>
+
+  <div id="moreSheet" class="more-sheet" hidden>
+    <div id="moreBackdrop" class="sheet-backdrop"></div>
+    <div class="sheet-panel">
+      <div class="sheet-handle"></div>
+      <div class="group">
+        <p class="group-title" data-i18n="groupPhone"></p>
+        <div class="group-items">
+          <button id="screenBtn" class="secondary" data-i18n="mirrorOn" hidden></button>
+          <button id="batteryBtn" class="secondary" data-i18n="batteryFix" hidden></button>
+          <button id="cameraBtn" class="secondary" data-i18n="cameraOn" hidden></button>
+          <button id="cameraFlipBtn" class="secondary" data-i18n="cameraFlip" hidden></button>
+          <button id="recordBtn" class="secondary" data-i18n="record" hidden></button>
+        </div>
+      </div>
+      <div class="group">
+        <p class="group-title" data-i18n="groupComputer"></p>
+        <div class="group-items">
+          <select id="screenSelect" class="secondary" hidden></select>
+          <button id="privacyBtn" class="secondary" hidden></button>
+          <button id="pinBtn" class="secondary" data-i18n="pinUnlock" hidden></button>
+          <button id="remoteStopBtn" class="secondary" data-i18n="stopShare" hidden></button>
+        </div>
+      </div>
+      <div class="group">
+        <p class="group-title" data-i18n="groupView"></p>
+        <div class="group-items">
+          <button id="fullscreenBtn" class="secondary" data-i18n="fullscreen"></button>
+          <button id="hideUiBtn" class="secondary" data-i18n="hideUi"></button>
+          <button id="changeBtn" class="secondary" data-i18n="change"></button>
+        </div>
+        <div class="themes-row"><span class="muted small" data-i18n="theme"></span><div id="themes" class="themes"></div></div>
+      </div>
+    </div>
   </div>
 
   <!-- Code entry -->
@@ -130,5 +161,6 @@
   <script src="/mic.js"></script>
   <script src="/screen.js"></script>
   <script src="/camera.js"></script>
+  <script src="/dock.js"></script>
 </body>
 </html>
