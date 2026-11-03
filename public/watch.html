@@ -44,6 +44,10 @@
     <button id="hideUiBtn" class="secondary" data-i18n="hideUi"></button>
     <button id="sendBtn" class="secondary" data-i18n="send"></button>
     <button id="micBtn" class="secondary" data-i18n="micOn" hidden></button>
+    <button id="screenBtn" class="secondary" data-i18n="mirrorOn" hidden></button>
+    <button id="batteryBtn" class="secondary" data-i18n="batteryFix" hidden></button>
+    <button id="cameraBtn" class="secondary" data-i18n="cameraOn" hidden></button>
+    <button id="cameraFlipBtn" class="secondary" data-i18n="cameraFlip" hidden></button>
     <button id="recordBtn" class="secondary" data-i18n="record" hidden></button>
     <button id="remoteStopBtn" class="secondary" data-i18n="stopShare" hidden></button>
     <select id="screenSelect" class="secondary" hidden></select>
@@ -95,6 +99,12 @@
     <!-- Remembered devices may start the share from here, if the computer allows it -->
     <button id="remoteStartBtn" data-i18n="startShare" hidden></button>
     <button id="unlockBtn" class="secondary" data-i18n="pinUnlock" hidden></button>
+    <!-- The Android app can show this phone's screen on the computer (screen.js) -->
+    <button id="screenWaitBtn" class="secondary" data-i18n="mirrorOn" hidden></button>
+    <button id="batteryWaitBtn" class="secondary" data-i18n="batteryFix" hidden></button>
+    <!-- This phone's camera on the computer (camera.js) -->
+    <button id="cameraWaitBtn" class="secondary" data-i18n="cameraOn" hidden></button>
+    <button id="cameraFlipWaitBtn" class="secondary" data-i18n="cameraFlip" hidden></button>
   </div>
 
   <!-- PIN the computer asks for before this device may start sharing or control -->
@@ -118,5 +128,7 @@
   <script src="/inbox.js"></script>
   <script src="/record.js"></script>
   <script src="/mic.js"></script>
+  <script src="/screen.js"></script>
+  <script src="/camera.js"></script>
 </body>
 </html>

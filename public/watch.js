@@ -167,6 +167,8 @@ function updateRemoteStart() {
   $('unlockBtn').hidden = !locked || !!pc;
   $('pinBtn').hidden = !locked || !pc;
   if (!locked) $('pinOverlay').classList.add('hidden');
+  if (typeof Mirror !== 'undefined') Mirror.update();
+  if (typeof Camera !== 'undefined') Camera.update();
 }
 
 // ---- Proving who we are, and the PIN ----
@@ -564,12 +566,18 @@ function handleHostSignal(data) {
   } else if (data.kind === 'caps') {
     canRemoteStart = !!data.remoteStart;
     pinSalt = data.pinNeeded ? String(data.pinSalt || '') : null;
+    if (typeof Mirror !== 'undefined') Mirror.setAllowed(data.mayMirror);
+    if (typeof Camera !== 'undefined') Camera.setAllowed(data.mayCamera);
     updateRemoteStart();
     updateComputerExtras(data);
   } else if (data.kind === 'pin-result') {
     pinResult(data);
   } else if (/^mic-/.test(data.kind)) {
     Mic.handle(data);
+  } else if (/^screen-/.test(data.kind)) {
+    Mirror.handle(data);
+  } else if (/^camera-/.test(data.kind)) {
+    Camera.handle(data);
   }
 }
 
@@ -782,6 +790,10 @@ loadConfig().then(function (cfg) {
         canRemoteStart = false; // the computer says again once it is back
         pinSalt = null;
         turnIce = [];
+        Mirror.setAllowed(false);
+        Mirror.stop(t('mirrorEnded'));
+        Camera.setAllowed(false);
+        Camera.stop(t('cameraEnded'));
         closePeer();
         showWaiting(t('hostGone'));
         retryJoin();

@@ -15,6 +15,8 @@ const VIEWER_FILES = {
   '/inbox.js': 'application/javascript; charset=utf-8',
   '/record.js': 'application/javascript; charset=utf-8',
   '/mic.js': 'application/javascript; charset=utf-8',
+  '/screen.js': 'application/javascript; charset=utf-8',
+  '/camera.js': 'application/javascript; charset=utf-8',
   '/cloud.js': 'application/javascript; charset=utf-8',
   '/icon.svg': 'image/svg+xml',
   '/apple-touch-icon.png': 'image/png',

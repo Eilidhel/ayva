@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Ayva</title>
+  <!-- A phone's screen. Opened and drawn into by the share page (share.js,
+       "A phone's screen in a window here"); it has no script of its own. -->
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    body { display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; }
+    canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+    video { width: 100%; height: 100%; object-fit: contain; }
+    [hidden] { display: none !important; }
+    #status:empty { display: none; }
+    #status {
+      position: absolute; color: #ddd; font-size: 14px; text-align: center; margin: 0 16px;
+      padding: 10px 14px; background: rgba(0, 0, 0, 0.75); border-radius: 8px;
+    }
+    .nav {
+      position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px;
+      opacity: 0.35; transition: opacity 0.2s;
+    }
+    .nav:hover { opacity: 1; }
+    .nav[hidden] { display: none; }
+    canvas.control { cursor: pointer; touch-action: none; }
+    #stats {
+      position: absolute; left: 8px; right: 8px; bottom: 6px; margin: 0; color: rgba(255, 255, 255, 0.55);
+      font-size: 11px; text-shadow: 0 0 3px #000; pointer-events: none;
+    }
+    /* Wraps onto more lines in a narrow (portrait) window instead of running off it. */
+    .bar {
+      position: absolute; top: 8px; left: 8px; right: 8px; display: flex; flex-wrap: wrap;
+      justify-content: flex-end; align-items: center; gap: 6px;
+      opacity: 0; transition: opacity 0.2s;
+    }
+    body:hover .bar, .bar:focus-within { opacity: 1; }
+    .bar button, .bar select, .bar label, .nav button {
+      font: inherit; font-size: 12px; color: #fff; background: rgba(40, 36, 30, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; padding: 5px 8px; cursor: pointer;
+    }
+    .bar select { max-width: 150px; }
+    .bar label { display: flex; align-items: center; gap: 6px; cursor: default; }
+    .bar input[type=range] { width: 90px; margin: 0; }
+    .bar button.stop { background: rgba(160, 40, 30, 0.9); }
+    /* Pairing the phone for control (share.js, "Pairing the phone") */
+    .panel {
+      position: absolute; left: 12px; right: 12px; top: 50%; transform: translateY(-50%);
+      max-width: 420px; margin: 0 auto; padding: 16px; border-radius: 10px;
+      background: rgba(30, 27, 22, 0.97); color: #eee; font-size: 13px; line-height: 1.45;
+      box-shadow: 0 6px 30px rgba(0, 0, 0, 0.6);
+    }
+    .panel h2 { margin: 0 0 8px; font-size: 15px; }
+    .panel p { margin: 0 0 10px; white-space: pre-line; }
+    .panel input {
+      width: 100%; box-sizing: border-box; margin: 0 0 8px; padding: 7px 9px; font: inherit;
+      color: #fff; background: #111; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 6px;
+    }
+    .panel button {
+      font: inherit; color: #fff; background: #8a5a12; border: 0; border-radius: 6px;
+      padding: 7px 12px; cursor: pointer; margin: 0 6px 6px 0;
+    }
+    .panel button.secondary { background: rgba(255, 255, 255, 0.12); }
+    .panel button:disabled { opacity: 0.5; cursor: default; }
+    #adbMsg { color: #f0c27a; min-height: 1em; }
+  </style>
+</head>
+<body>
+  <canvas id="screen" width="0" height="0"></canvas>
+  <!-- A phone's camera uses this window too, with a video instead of the canvas -->
+  <video id="video" autoplay playsinline muted hidden></video>
+  <p id="status"></p>
+  <p id="stats"></p>
+  <!-- The phone's own buttons, when it may be controlled from here -->
+  <div class="nav" id="nav" hidden>
+    <button id="backBtn" type="button">◁</button>
+    <button id="homeBtn" type="button">○</button>
+    <button id="recentsBtn" type="button">▢</button>
+  </div>
+  <div class="panel" id="adbPanel" hidden>
+    <h2 id="adbTitle"></h2>
+    <p id="adbSteps"></p>
+    <div id="adbGet" hidden>
+      <p id="adbGetText"></p>
+      <button id="adbDownload" type="button"></button>
+      <button id="adbTerms" type="button" class="secondary"></button>
+    </div>
+    <div id="adbForm" hidden>
+      <input id="adbAddr" inputmode="decimal" autocomplete="off">
+      <input id="adbCode" inputmode="numeric" maxlength="6" autocomplete="off">
+      <button id="adbPairBtn" type="button"></button>
+    </div>
+    <p id="adbMsg"></p>
+    <button id="adbClose" type="button" class="secondary"></button>
+  </div>
+  <div class="bar">
+    <!-- The phone's sound: how loud here (0-200 %), where it comes out, where it plays -->
+    <label id="volumeBox"><span id="volumeIcon">🔊</span><input id="volume" type="range" min="0" max="200" step="5"></label>
+    <select id="outputSel" hidden></select>
+    <button id="ctlBtn" type="button" hidden></button>
+    <button id="soundBtn" type="button"></button>
+    <button id="fullBtn" type="button"></button>
+    <button id="stopBtn" type="button" class="stop"></button>
+  </div>
+</body>
+</html>

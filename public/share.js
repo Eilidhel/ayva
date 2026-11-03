@@ -218,7 +218,7 @@ function openTransferChannel(id, pc) {
       delete receivesFiles[id];
       updateUi();
       // The page on the other side was closed: no need to wait for a timeout.
-      if (orphaned[id]) viewerLeft(id);
+      if (orphaned[id] && !mirrorAlive(id)) viewerLeft(id);
     }
   };
 }
@@ -335,11 +335,13 @@ function openControlChannel(id, pc) {
 
 function applyBitrate(pc) {
   var q = QUALITY[$('quality').value];
+  var paused = streamPausedFor(pc);
   pc.getSenders().forEach(function (sender) {
     if (!sender.track) return;
     var params = sender.getParameters();
     if (!params.encodings || !params.encodings.length) params.encodings = [{}];
     var enc = params.encodings[0];
+    enc.active = !paused;
     if (sender.track.kind === 'video') {
       enc.maxBitrate = q.bitrate;
       enc.maxFramerate = q.fps;
@@ -382,7 +384,8 @@ function openPeer(id, creds) {
 
   pc.onconnectionstatechange = function () {
     // A viewer we only know through its direct connection is gone once that ends.
-    if (orphaned[id] && viewers[id] === pc && (pc.connectionState === 'failed' || pc.connectionState === 'closed')) {
+    if (orphaned[id] && viewers[id] === pc && (pc.connectionState === 'failed' || pc.connectionState === 'closed')
+        && !mirrorAlive(id)) {
       viewerLeft(id);
     }
   };
@@ -558,6 +561,34 @@ function handleViewerSignal(id, data) {
   }
   if (data.kind === 'mic-stop') {
     closeMic(id);
+    return;
+  }
+  if (data.kind === 'camera-offer') {
+    cameraOffer(id, data.sdp);
+    return;
+  }
+  if (data.kind === 'camera-candidate') {
+    if (cameras[id] && cameras[id].pc) addCandidate(cameras[id].pc, data.candidate);
+    return;
+  }
+  if (data.kind === 'camera-stop') {
+    closeCamera(id, false);
+    return;
+  }
+  if (data.kind === 'screen-request') {
+    mirrorRequest(id);
+    return;
+  }
+  if (data.kind === 'screen-answer') {
+    mirrorAnswer(id, data.sdp);
+    return;
+  }
+  if (data.kind === 'screen-candidate') {
+    if (mirrors[id] && mirrors[id].pc) addCandidate(mirrors[id].pc, data.candidate);
+    return;
+  }
+  if (data.kind === 'screen-stop') {
+    closeMirror(id, false, data.reason ? String(data.reason) : 'phone');
     return;
   }
   var pc = viewers[id];
@@ -899,6 +930,8 @@ function renderDevices() {
     if (!controlOn && controlAllowed(id)) tags.push({ text: t('controlTag'), cls: 'alert' });
     if (info.recording) tags.push({ text: t('recordingTag'), cls: 'alert' });
     if (mics[id]) tags.push({ text: t('talkingTag'), cls: 'alert' });
+    if (mirrors[id]) tags.push({ text: t('mirrorTag'), cls: 'alert' });
+    if (cameras[id]) tags.push({ text: t('cameraTag'), cls: 'alert' });
     if (info.relayed) tags.push({ text: t('relayTag'), cls: 'net' });
     list.appendChild(deviceRow(deviceLabel(info), tags, t('kick'), function () { kick(id); }, info.deviceId));
   });
@@ -908,6 +941,7 @@ function renderDevices() {
   tl.innerHTML = '';
   trusted.forEach(function (d) {
     var tags = d.key ? (d.pin ? [{ text: t('pinTag') }] : []) : [{ text: t('needsReapproval'), cls: 'alert' }];
+    if (d.adbSerial) tags.push({ text: t('adbPairedTag').replace('{model}', d.adbModel || '') });
     var row = deviceRow(deviceNames[d.id] || d.name, tags, t('forget'), function () { forget(d.id); }, d.id);
     if (d.key) {
       var actions = row.querySelector('.row');
@@ -917,6 +951,11 @@ function renderDevices() {
       pinBtn.title = t('pinHint');
       pinBtn.onclick = function () { startPinEdit(row, d); };
       actions.prepend(pinBtn);
+      if (window.ayva) actions.prepend(permissionBox(d, 'canCamera'));
+      if (window.ayva && typeof VideoDecoder !== 'undefined') {
+        if (PHONE_CONTROL && d.canMirror) actions.prepend(permissionBox(d, 'canControlPhone'));
+        actions.prepend(permissionBox(d, 'canMirror'));
+      }
       if (controlSupported) actions.prepend(permissionBox(d, 'canControl'));
       if (window.ayva && window.ayva.remoteStart) actions.prepend(permissionBox(d, 'canStart'));
     }
@@ -924,7 +963,7 @@ function renderDevices() {
   });
 }
 
-// A per-device permission tick box: 'canStart' or 'canControl'.
+// A per-device permission tick box: 'canStart', 'canControl', 'canMirror', 'canControlPhone' or 'canCamera'.
 function permissionBox(d, key) {
   var label = document.createElement('label');
   label.className = 'row small';
@@ -969,11 +1008,13 @@ function canRemoteStart(id) {
 function sendCaps(id) {
   var info = viewerInfo[id];
   var d = info && isTrusted(info.deviceId) ? trustedEntry(info.deviceId) : null;
-  var pinNeeded = !!d && !!d.pin && !info.pinOk && !!(d.canStart || d.canControl);
+  var pinNeeded = !!d && !!d.pin && !info.pinOk && !!(d.canStart || d.canControl || d.canMirror || d.canControlPhone || d.canCamera);
   var pick = mayPickScreen(id) && screens.length > 1;
   viaSignal(id).send({ type: 'signal', to: id, data: {
     kind: 'caps',
     remoteStart: canRemoteStart(id),
+    mayMirror: mayMirror(id),
+    mayCamera: mayCamera(id),
     pinNeeded: pinNeeded,
     pinSalt: pinNeeded ? d.pin.salt : undefined,
     privacy: privacyOn,
@@ -1102,6 +1143,7 @@ function startPinEdit(row, d) {
 
 function broadcastCaps() {
   Object.keys(viewerInfo).forEach(sendCaps);
+  checkMirrors();
 }
 
 function remoteShare(id, start) {
@@ -1287,6 +1329,992 @@ function closeMic(id) {
   echoRemoveVoice(id);
   m.pc.close();
   m.audio.srcObject = null;
+  renderDevices();
+}
+
+// ---- A phone's screen in a window here ----
+// A remembered (proven) device whose "Can show its screen" box is ticked may
+// show its own screen: the Ayva app on Android encodes it (H.264) and sends it
+// over a data channel this computer opens (chunk format: see screen.js). It is
+// decoded here with WebCodecs and drawn into a window of its own
+// (mirror.html); closing the window ends it. A notification every time.
+
+var mirrors = {}; // viewer id -> { pc, dc, win, canvas, decoder, sps, ... }
+var mirrorWindows = {}; // device id -> its last window, which stays open saying why it ended
+var MIRROR_MAX_FRAME = 8 * 1024 * 1024;
+var MIRROR_END = {
+  phone: 'mirrorEndPhone', notification: 'mirrorEndNotification', system: 'mirrorEndSystem', locked: 'mirrorEndLocked',
+  failed: 'mirrorEndFailed', connection: 'mirrorEndConnection',
+};
+
+function mayMirror(id) {
+  return !!window.ayva && typeof VideoDecoder !== 'undefined' && deviceRight(id, 'canMirror');
+}
+
+// Touches from the mouse in its window, a second box ticked for the device.
+// They go over ADB (desktop/adb.js): the phone is paired once from the window
+// (Wireless debugging), so only the desktop app can do it.
+var PHONE_CONTROL = !!(window.ayva && window.ayva.adbStatus);
+
+function mayControlPhone(id) {
+  return PHONE_CONTROL && mayMirror(id) && deviceRight(id, 'canControlPhone');
+}
+
+// While a phone shows its screen here, this computer's stream to that phone
+// is paused: the phone isn't looking at it, its Wi-Fi is busy sending, and
+// its sound would come back here through the phone's own sound.
+function streamPausedFor(pc) {
+  var id = Object.keys(viewers).filter(function (v) { return viewers[v] === pc; })[0];
+  var info = id && viewerInfo[id];
+  if (!info || !info.deviceId) return false;
+  return Object.keys(mirrors || {}).some(function (mid) {
+    return !!viewerInfo[mid] && viewerInfo[mid].deviceId === info.deviceId;
+  });
+}
+
+function refreshStreamsTo(deviceId) {
+  if (!deviceId) return;
+  Object.keys(viewers).forEach(function (v) {
+    if (viewers[v] && viewerInfo[v] && viewerInfo[v].deviceId === deviceId) applyBitrate(viewers[v]);
+  });
+}
+
+// Still coming in directly, even if the phone's server connection dropped.
+function mirrorAlive(id) {
+  var m = mirrors[id];
+  return !!m && !!m.pc && m.pc.connectionState === 'connected';
+}
+
+function mirrorRequest(id) {
+  closeMirror(id, false, null, 'replaced');
+  var info = viewerInfo[id];
+  var reply = function (data) { viaSignal(id).send({ type: 'signal', to: id, data: data }); };
+  if (!mayMirror(id)) {
+    reply({ kind: 'screen-refused' });
+    return;
+  }
+  var old = mirrorWindows[info.deviceId];
+  if (old && !old.closed) old.close();
+  var win = window.open('/mirror.html', 'ayva-mirror-' + Date.now());
+  if (!win) {
+    reply({ kind: 'screen-stop' });
+    return;
+  }
+  mirrorWindows[info.deviceId] = win;
+  var m = {
+    win: win, pc: null, dc: null, canvas: null, ctx: null, decoder: null, sps: null, parts: null, waitKey: true,
+    stat: { bytes: 0, frames: 0, drawn: 0, maxGap: 0, lastDraw: 0, skipped: 0, late: 0, soundLate: 0 }, phone: null,
+  };
+  mirrors[id] = m;
+  refreshStreamsTo(info.deviceId);
+  var title = t('mirrorTitle').replace('{who}', deviceLabel(info));
+  logEvent('mirroring', info);
+  m.startedAt = Date.now();
+  window.ayva.notify(title, '');
+  mirrorWindowReady(id, m, title);
+  renderDevices();
+
+  turnFor(id).then(function (creds) {
+    if (mirrors[id] !== m) return;
+    if (creds) sendIce(id, creds);
+    var pc = new RTCPeerConnection(peerConfig(creds));
+    m.pc = pc;
+    var dc = pc.createDataChannel('screen', { ordered: true });
+    m.dc = dc;
+    dc.binaryType = 'arraybuffer';
+    dc.onopen = function () { sendMirrorSound(m); };
+    dc.onmessage = function (e) {
+      if (mirrors[id] !== m) return;
+      if (typeof e.data !== 'string') {
+        mirrorChunk(m, e.data);
+        return;
+      }
+      // The phone's numbers, and why it stopped (sent before it closes the channel).
+      var msg;
+      try { msg = JSON.parse(e.data); } catch (err) { return; }
+      if (msg && msg.t === 'stats') {
+        m.phone = msg;
+        m.phoneAt = Date.now();
+      } else if (msg && msg.t === 'phone-screen') {
+        m.phoneScreenOff = !msg.on;
+        if (m.status && !m.win.closed) {
+          if (!msg.on) m.status.textContent = t('mirrorPhoneScreenOff');
+          else if (m.status.textContent === t('mirrorPhoneScreenOff')) m.status.textContent = '';
+        }
+      }
+      else if (msg && msg.t === 'stop') closeMirror(id, false, String(msg.reason || 'phone'));
+      else if (msg && msg.t === 'sound-failed') {
+        // This phone can't play its sound here only: it plays on both (and is kept that way).
+        storageSet(MIRROR_SOUND_KEY, 'both');
+        if (m.showSound) m.showSound();
+        if (m.status && !m.win.closed) {
+          m.status.textContent = t('mirrorSoundPcFailed');
+          m.win.setTimeout(function () {
+            if (m.status.textContent === t('mirrorSoundPcFailed')) m.status.textContent = '';
+          }, 8000);
+        }
+      }
+    };
+    dc.onclose = function () { if (mirrors[id] === m) closeMirror(id, false, 'connection'); };
+    pc.onicecandidate = function (e) {
+      if (e.candidate) reply({ kind: 'screen-candidate', candidate: e.candidate });
+    };
+    pc.onconnectionstatechange = function () {
+      if (pc.connectionState === 'failed' && mirrors[id] === m) closeMirror(id, true, 'connection');
+    };
+    pc.createOffer()
+      .then(function (offer) { return pc.setLocalDescription(offer); })
+      .then(function () { reply({ kind: 'screen-offer', sdp: pc.localDescription }); })
+      .catch(function () { if (mirrors[id] === m) closeMirror(id, true, null, 'offer-failed'); });
+  });
+}
+
+function mirrorAnswer(id, sdp) {
+  var m = mirrors[id];
+  if (!m || !m.pc || !sdp) return;
+  m.pc.setRemoteDescription(sdp)
+    .then(function () { flushCandidates(m.pc); })
+    .catch(function () { if (mirrors[id] === m) closeMirror(id, true, null, 'answer-failed'); });
+}
+
+// The window loads on its own; once it has, the canvas and buttons are wired
+// up. Timers that keep running go on the window, not this page: hidden in the
+// tray, this page's timers are slowed down to once a minute.
+function mirrorWindowReady(id, m, title) {
+  var tries = 0;
+  var wired = false;
+  m.win.addEventListener('load', check);
+  check();
+  function check() {
+    if (mirrors[id] !== m || wired) return;
+    var doc = null;
+    try { doc = m.win.document; } catch (e) { /* not loaded yet */ }
+    if (!doc || doc.readyState !== 'complete' || !doc.getElementById('screen')) {
+      if (++tries < 100 && !m.win.closed) setTimeout(check, 50);
+      else if (tries >= 100) closeMirror(id, true, null, 'window-not-ready');
+      return;
+    }
+    wired = true;
+    doc.title = title;
+    doc.documentElement.lang = LANG;
+    m.canvas = doc.getElementById('screen');
+    m.ctx = m.canvas.getContext('2d');
+    m.status = doc.getElementById('status');
+    if (!m.decoder || m.decoder.state !== 'configured') m.status.textContent = t('mirrorWaiting');
+    doc.getElementById('stopBtn').textContent = t('mirrorStop');
+    m.stats = doc.getElementById('stats');
+    doc.getElementById('stopBtn').onclick = function () {
+      if (mirrors[id] === m) closeMirror(id, true, null, 'stop-button');
+      else m.win.close();
+    };
+    var full = function () {
+      if (doc.fullscreenElement) doc.exitFullscreen();
+      else doc.documentElement.requestFullscreen().catch(function () {});
+    };
+    doc.getElementById('fullBtn').textContent = t('fullscreen');
+    doc.getElementById('fullBtn').onclick = full;
+    var soundBtn = doc.getElementById('soundBtn');
+    fillMirrorOutputs(m, doc.getElementById('outputSel'));
+    wireMirrorVolume(m, doc);
+    var showSound = m.showSound = function () {
+      soundBtn.textContent = t(mirrorSoundWhere() === 'both' ? 'mirrorSoundBoth' : 'mirrorSoundPc');
+    };
+    showSound();
+    soundBtn.onclick = function () {
+      storageSet(MIRROR_SOUND_KEY, mirrorSoundWhere() === 'both' ? 'pc' : 'both');
+      showSound();
+      sendMirrorSound(m);
+    };
+    // A double click is two taps on the phone while it is controlled from here.
+    m.canvas.ondblclick = function () { if (!mayControlPhone(id)) full(); };
+    wireMirrorControl(id, m, doc);
+    // Closing the window (its X) ends it; checked again by a timer in case
+    // the window goes without telling.
+    m.win.addEventListener('pagehide', function () { if (mirrors[id] === m) closeMirror(id, true, null, 'window-pagehide'); });
+    m.watch = setInterval(function () { if (m.win.closed && mirrors[id] === m) closeMirror(id, true, null, 'window-closed'); }, 1000);
+    m.statsTimer = m.win.setInterval(function () { mirrorStats(m); }, 2000);
+  }
+}
+
+// ---- Controlling the phone from its window ----
+// The mouse is a finger: pressing, moving and releasing go to the phone as
+// they happen (positions are fractions of the picture), over ADB to
+// InputServer on the phone (desktop/adb.js). Right click is Back, the wheel
+// scrolls, and the phone's own buttons sit at the bottom of the window. The
+// first time, the window walks through pairing the phone (Wireless debugging).
+
+function wireMirrorControl(id, m, doc) {
+  var c = m.canvas;
+  var down = false;
+  var lastMove = 0;
+  var pos = function (e) {
+    var r = c.getBoundingClientRect();
+    var f = function (v) { return Math.max(0, Math.min(1, v)).toFixed(4); };
+    return f((e.clientX - r.left) / r.width) + ' ' + f((e.clientY - r.top) / r.height);
+  };
+  c.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0 || !mayControlPhone(id) || mirrors[id] !== m) return;
+    if (!mirrorControl(id, m, 'down ' + pos(e))) return;
+    c.setPointerCapture(e.pointerId);
+    down = true;
+  });
+  c.addEventListener('pointermove', function (e) {
+    if (!down || e.timeStamp - lastMove < 12) return;
+    lastMove = e.timeStamp;
+    mirrorControl(id, m, 'move ' + pos(e));
+  });
+  var lift = function (e) {
+    if (!down) return;
+    down = false;
+    mirrorControl(id, m, 'up ' + pos(e));
+  };
+  c.addEventListener('pointerup', lift);
+  c.addEventListener('pointercancel', lift);
+  c.addEventListener('contextmenu', function (e) {
+    if (!mayControlPhone(id)) return;
+    e.preventDefault();
+    mirrorControl(id, m, 'key back');
+  });
+  c.addEventListener('wheel', function (e) {
+    if (!mayControlPhone(id)) return;
+    e.preventDefault();
+    var notches = (e.deltaMode === 1 ? e.deltaY / 3 : e.deltaY / 100);
+    mirrorControl(id, m, 'scroll ' + pos(e) + ' ' + Math.max(-10, Math.min(10, notches)).toFixed(2));
+  }, { passive: false });
+  [['backBtn', 'back', 'navBack'], ['homeBtn', 'home', 'navHome'], ['recentsBtn', 'recents', 'navRecents']]
+    .forEach(function (b) {
+      var btn = doc.getElementById(b[0]);
+      btn.title = t(b[2]);
+      btn.onclick = function () { mirrorControl(id, m, 'key ' + b[1]); };
+    });
+  doc.getElementById('ctlBtn').textContent = t('adbSetUp');
+  doc.getElementById('ctlBtn').onclick = function () { openAdbPanel(id, m); };
+  doc.getElementById('adbClose').onclick = function () { doc.getElementById('adbPanel').hidden = true; };
+  startMirrorControl(id, m);
+}
+
+// The device's pairing, kept with it among the remembered devices.
+function adbEntry(id) {
+  var info = viewerInfo[id];
+  return info ? trustedEntry(info.deviceId) : null;
+}
+
+// Connects to the paired phone and starts InputServer there.
+function startMirrorControl(id, m) {
+  var d = adbEntry(id);
+  updateMirrorControl(id, m);
+  if (!mayControlPhone(id) || !d || !d.adbSerial || m.adbStarting || m.adbReady) return;
+  m.adbStarting = true;
+  m.adbSerial = d.adbSerial;
+  window.ayva.adbStart(d.adbSerial, d.adbHost || '').then(function (r) {
+    m.adbStarting = false;
+    if (mirrors[id] !== m) {
+      if (r && r.ok) window.ayva.adbStop(d.adbSerial);
+      return;
+    }
+    m.adbReady = !!(r && r.ok);
+    m.adbError = r && !r.ok ? r.error : null;
+    updateMirrorControl(id, m);
+  });
+}
+
+function stopMirrorControl(m) {
+  if (m.adbSerial && window.ayva && window.ayva.adbStop) window.ayva.adbStop(m.adbSerial);
+  m.adbReady = false;
+}
+
+// Sends one line to InputServer; false (with a word in the window) when it can't.
+function mirrorControl(id, m, line) {
+  if (mirrors[id] !== m || !mayControlPhone(id)) return false;
+  if (!m.adbReady) {
+    mirrorHint(m, t(m.adbStarting ? 'adbConnecting' : 'adbNotReady'));
+    return false;
+  }
+  window.ayva.adbInput(m.adbSerial, line);
+  return true;
+}
+
+function mirrorHint(m, text) {
+  m.status.textContent = text;
+  m.win.clearTimeout(m.hintTimer);
+  m.hintTimer = m.win.setTimeout(function () {
+    if (m.status.textContent === text) m.status.textContent = '';
+  }, 5000);
+}
+
+function updateMirrorControl(id, m) {
+  if (!m.canvas || m.win.closed) return;
+  var allowed = mayControlPhone(id);
+  var doc = m.win.document;
+  doc.getElementById('nav').hidden = !allowed || !m.adbReady;
+  doc.getElementById('ctlBtn').hidden = !allowed || !!m.adbReady;
+  m.canvas.classList.toggle('control', allowed && !!m.adbReady);
+  if (!allowed && m.adbReady) stopMirrorControl(m);
+  if (m.adbError && !m.adbReady) doc.getElementById('ctlBtn').title = t('adbErr_' + m.adbError);
+}
+
+// ---- Pairing the phone (first time, or after Ayva's data was cleared) ----
+
+var ADB_ERRORS = ['input', 'pair', 'connect', 'app', 'start', 'missing', 'denied'];
+
+function openAdbPanel(id, m) {
+  var doc = m.win.document;
+  var panel = doc.getElementById('adbPanel');
+  var msg = doc.getElementById('adbMsg');
+  panel.hidden = false;
+  doc.getElementById('adbTitle').textContent = t('adbTitle');
+  doc.getElementById('adbSteps').textContent = t('adbSteps');
+  doc.getElementById('adbClose').textContent = t('mirrorClose');
+  var get = doc.getElementById('adbGet');
+  var form = doc.getElementById('adbForm');
+  msg.textContent = m.adbError ? t('adbErr_' + m.adbError) : '';
+  window.ayva.adbStatus().then(function (s) {
+    get.hidden = !!s.installed;
+    form.hidden = !s.installed;
+    if (!s.installed) {
+      doc.getElementById('adbGetText').textContent = t('adbGetText');
+      var terms = doc.getElementById('adbTerms');
+      terms.textContent = t('adbTerms');
+      // Opens in the normal browser (links from the share page do).
+      terms.onclick = function () { window.open(s.termsUrl); };
+      var dl = doc.getElementById('adbDownload');
+      dl.textContent = t('adbDownload');
+      dl.disabled = false;
+      dl.onclick = function () {
+        dl.disabled = true;
+        msg.textContent = t('adbDownloading').replace('{p}', '0');
+        window.ayva.adbDownload().then(function (r) {
+          if (r && r.ok) openAdbPanel(id, m);
+          else {
+            dl.disabled = false;
+            msg.textContent = t('adbDownloadFailed') + (r && r.error ? ' (' + r.error + ')' : '');
+          }
+        });
+      };
+    }
+  });
+  doc.getElementById('adbAddr').placeholder = t('adbAddrHint');
+  doc.getElementById('adbCode').placeholder = t('adbCodeHint');
+  var pairBtn = doc.getElementById('adbPairBtn');
+  pairBtn.textContent = t('adbPair');
+  pairBtn.onclick = function () {
+    var addr = doc.getElementById('adbAddr').value.trim();
+    var code = doc.getElementById('adbCode').value.trim();
+    var a = /^(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})$/.exec(addr);
+    if (!a || !/^\d{6}$/.test(code)) {
+      msg.textContent = t('adbErr_input');
+      return;
+    }
+    pairBtn.disabled = true;
+    msg.textContent = t('adbPairing');
+    window.ayva.adbPair(a[1], a[2], code).then(function (r) {
+      pairBtn.disabled = false;
+      var d = adbEntry(id);
+      if (!r || !r.ok || !d) {
+        var err = r && ADB_ERRORS.indexOf(r.error) >= 0 ? r.error : 'pair';
+        msg.textContent = t('adbErr_' + err);
+        return;
+      }
+      d.adbSerial = r.serial;
+      d.adbHost = a[1];
+      d.adbModel = r.model || '';
+      saveTrusted();
+      renderDevices();
+      msg.textContent = t('adbPaired').replace('{model}', d.adbModel);
+      m.adbError = null;
+      m.adbReady = false;
+      startMirrorControl(id, m);
+      m.win.setTimeout(function () { panel.hidden = true; }, 2500);
+    });
+  };
+}
+
+if (window.ayva && window.ayva.onAdbProgress) {
+  window.ayva.onAdbProgress(function (fraction) {
+    Object.keys(mirrors).forEach(function (id) {
+      var m = mirrors[id];
+      if (!m.win.closed && !m.win.document.getElementById('adbPanel').hidden) {
+        m.win.document.getElementById('adbMsg').textContent = t('adbDownloading').replace('{p}', Math.round(fraction * 100));
+      }
+    });
+  });
+}
+
+// One line at the bottom of the window, to tell a slow network from a slow
+// phone or a slow computer when the picture stutters.
+function mirrorStats(m) {
+  var s = m.stat;
+  var p = m.phone;
+  var parts = [
+    m.canvas.width + '×' + m.canvas.height,
+    Math.round(s.drawn / 2) + ' fps',
+    (s.bytes * 8 / 2e6).toFixed(1) + ' Mbit/s',
+    t('mirrorGap') + ' ' + Math.round(s.maxGap) + ' ms',
+  ];
+  if (s.skipped) parts.push(t('mirrorSkippedHere') + ' ' + s.skipped);
+  if (s.late) parts.push(t('mirrorLate') + ' ' + s.late);
+  if (s.soundLate) parts.push(t('mirrorSoundLate') + ' ' + s.soundLate);
+  if (p) {
+    parts.push(t('mirrorPhone') + ': ' + (Number(p.rate) / 1e6).toFixed(1) + ' Mbit/s, '
+      + t('mirrorSkipped') + ' ' + (Number(p.skipped) || 0) + '/' + (Number(p.appSkipped) || 0)
+      + ', ' + t('mirrorQueue') + ' ' + Math.round((Number(p.buffered) || 0) / 1024) + ' KB');
+    if (p.sound != null) {
+      parts.push(t('mirrorSound') + ' ' + (p.sound === 'none' ? t('mirrorNoSound') : Number(p.sound) + ' dB'));
+    }
+    // Pictures per second made by the phone's encoder / reaching its page / sent on.
+    if (p.ms > 0 && p.encoded !== undefined) {
+      var perS = function (n) { return Math.round((Number(n) || 0) * 1000 / p.ms); };
+      parts.push(t('mirrorPipeline') + ' ' + perS(p.encoded) + '/' + perS(p.got) + '/' + perS(p.sent) + ' fps');
+    }
+  }
+  // The phone's page reports every 2 s; nothing for a while means it is stuck.
+  if (m.phoneAt && Date.now() - m.phoneAt > 6000) {
+    parts.push(t('mirrorPhoneSilent').replace('{s}', Math.round((Date.now() - m.phoneAt) / 1000)));
+  }
+  if (m.phoneScreenOff) parts.push(t('mirrorPhoneScreenOff'));
+  if (m.audioBroken) parts.push(t('mirrorSoundBroken'));
+  m.stats.textContent = parts.join(' · ');
+  m.stat = { bytes: 0, frames: 0, drawn: 0, maxGap: 0, lastDraw: s.lastDraw, skipped: 0, late: 0, soundLate: 0 };
+}
+
+// Joins a picture's chunks; a whole picture goes to the decoder.
+function mirrorChunk(m, buf) {
+  if (!(buf instanceof ArrayBuffer)) return;
+  var b = new Uint8Array(buf);
+  if (!b.length) return;
+  m.stat.bytes += b.length;
+  var flags = b[0];
+  if (flags & 8) {
+    if (b.length > 9) {
+      var at = new DataView(buf, 1, 8);
+      mirrorAudio(m, at.getUint32(0) * 4294967296 + at.getUint32(4), b.subarray(9));
+    }
+    return;
+  }
+  if (flags & 2) {
+    if (b.length < 9) return;
+    var v = new DataView(buf, 1, 8);
+    m.key = !!(flags & 1);
+    m.time = v.getUint32(0) * 4294967296 + v.getUint32(4);
+    m.parts = [b.subarray(9)];
+    m.size = b.length - 9;
+  } else {
+    if (!m.parts) return;
+    m.parts.push(b.subarray(1));
+    m.size += b.length - 1;
+  }
+  if (m.size > MIRROR_MAX_FRAME) {
+    m.parts = null;
+    return;
+  }
+  if (!(flags & 4)) return;
+  var data = new Uint8Array(m.size);
+  var off = 0;
+  m.parts.forEach(function (p) {
+    data.set(p, off);
+    off += p.length;
+  });
+  m.parts = null;
+  mirrorDecode(m, m.key, m.time, data);
+}
+
+// The SPS (Annex B NAL unit type 7) names the profile and level the decoder needs.
+function findSps(data) {
+  var start = -1;
+  for (var i = 0; i + 3 < data.length; i++) {
+    if (data[i] !== 0 || data[i + 1] !== 0 || data[i + 2] !== 1) continue;
+    if (start >= 0) return data.subarray(start, data[i - 1] === 0 ? i - 1 : i);
+    if ((data[i + 3] & 0x1f) === 7) start = i + 3;
+    i += 2;
+  }
+  return start >= 0 ? data.subarray(start) : null;
+}
+
+function sameBytes(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+function mirrorDecode(m, key, time, data) {
+  if (m.unsupported) return;
+  if (key) {
+    var sps = findSps(data);
+    // A new SPS (the phone was turned, so the size changed): start the decoder over.
+    if (sps && sps.length >= 4 && (!m.decoder || m.decoder.state === 'closed' || !sameBytes(sps, m.sps))) {
+      mirrorDecoder(m, sps);
+    }
+  }
+  var decoder = m.decoder;
+  if (!decoder || decoder.state !== 'configured' || (m.waitKey && !key)) return;
+  // A decoder that falls behind only adds delay: skip ahead to the next key frame.
+  if (decoder.decodeQueueSize > 8) {
+    m.stat.skipped++;
+    m.waitKey = true;
+    mirrorAskKey(m);
+    return;
+  }
+  m.waitKey = false;
+  try {
+    decoder.decode(new EncodedVideoChunk({ type: key ? 'key' : 'delta', timestamp: time, data: data }));
+  } catch (e) {
+    m.waitKey = true;
+    mirrorAskKey(m);
+  }
+}
+
+function mirrorDecoder(m, sps) {
+  if (m.decoder && m.decoder.state !== 'closed') m.decoder.close();
+  m.sps = sps.slice();
+  var hex = function (n) { return ('0' + n.toString(16)).slice(-2); };
+  var decoder = new VideoDecoder({
+    output: function (frame) { drawMirror(m, frame); },
+    error: function (e) {
+      if (m.decoder !== decoder) return;
+      m.decoder = null;
+      m.sps = null;
+      m.waitKey = true;
+      if (e && e.name === 'NotSupportedError') {
+        m.unsupported = true;
+        if (m.status) m.status.textContent = t('mirrorUnsupported');
+        return;
+      }
+      mirrorAskKey(m);
+    },
+  });
+  m.decoder = decoder;
+  m.waitKey = true;
+  try {
+    // No description: the data stays in Annex B form, SPS/PPS in front of key frames.
+    decoder.configure({ codec: 'avc1.' + hex(sps[1]) + hex(sps[2]) + hex(sps[3]), optimizeForLatency: true });
+  } catch (e) {
+    m.decoder = null;
+    m.unsupported = true;
+    if (m.status) m.status.textContent = t('mirrorUnsupported');
+  }
+}
+
+function mirrorAskKey(m) {
+  if (m.dc && m.dc.readyState === 'open') m.dc.send('key');
+}
+
+// ---- Even pacing ----
+// Pictures reach this computer unevenly (Wi-Fi, the phone handing them on in
+// bursts) and drawing each the moment it is decoded shows that as stutter.
+// Instead each is shown at the phone's own timing (its timestamp) plus a
+// small fixed delay, on the window's display refresh. The fastest delivery
+// seen lately sets where "on time" is; it is looked at afresh every few
+// seconds, so the clocks drifting apart doesn't matter.
+
+var MIRROR_DELAY_MS = 60;
+var MIRROR_BASE_WINDOW_MS = 5000;
+
+function drawMirror(m, frame) {
+  if (!m.canvas || m.win.closed) {
+    frame.close();
+    return;
+  }
+  var now = performance.now();
+  var off = now - frame.timestamp / 1000;
+  // A new phone clock (capture restarted): start over.
+  if (m.base === undefined || Math.abs(off - m.base) > 1500) {
+    m.base = off;
+    m.nextBase = off;
+    m.baseAt = now;
+  }
+  if (off < m.base) m.base = off;
+  m.nextBase = Math.min(m.nextBase, off);
+  if (now - m.baseAt > MIRROR_BASE_WINDOW_MS) {
+    m.base = m.nextBase;
+    m.nextBase = off;
+    m.baseAt = now;
+  }
+  var due = frame.timestamp / 1000 + m.base + MIRROR_DELAY_MS;
+  if (due < now - 30) m.stat.late++;
+  m.queue = m.queue || [];
+  m.queue.push({ frame: frame, due: due });
+  // Decoded pictures held here are memory the decoder can't reuse: keep only
+  // a few. With no display refreshes (window minimized, or seen as covered),
+  // the oldest goes on screen right away instead of waiting.
+  while (m.queue.length > 4) showMirrorFrame(m, m.queue.shift().frame);
+  if (!m.ticking) {
+    m.ticking = true;
+    m.win.requestAnimationFrame(function tick() {
+      if (m.win.closed || !m.queue) return;
+      paintMirror(m);
+      m.win.requestAnimationFrame(tick);
+    });
+  }
+}
+
+// On each display refresh: the newest picture that is due; older ones are skipped.
+function paintMirror(m) {
+  var now = performance.now();
+  var pick = -1;
+  for (var i = 0; i < m.queue.length; i++) if (m.queue[i].due <= now) pick = i;
+  if (pick < 0) return;
+  for (var j = 0; j < pick; j++) m.queue[j].frame.close();
+  var frame = m.queue[pick].frame;
+  m.queue = m.queue.slice(pick + 1);
+  showMirrorFrame(m, frame);
+}
+
+function dropMirrorQueue(m) {
+  (m.queue || []).forEach(function (q) { q.frame.close(); });
+  m.queue = null;
+}
+
+function showMirrorFrame(m, frame) {
+  var c = m.canvas;
+  var w = frame.displayWidth;
+  var h = frame.displayHeight;
+  if (c.width !== w || c.height !== h) {
+    if (c.width && (c.width > c.height) !== (w > h)) m.sized = false; // turned
+    c.width = w;
+    c.height = h;
+  }
+  if (!m.sized) m.sized = fitMirrorWindow(m, w, h);
+  m.ctx.drawImage(frame, 0, 0);
+  frame.close();
+  var now = performance.now();
+  if (m.stat.lastDraw) m.stat.maxGap = Math.max(m.stat.maxGap, now - m.stat.lastDraw);
+  m.stat.lastDraw = now;
+  m.stat.drawn++;
+  if (m.status.textContent === t('mirrorWaiting')) m.status.textContent = '';
+}
+
+// ---- The phone's sound ----
+// Opus packets (screen.js), timed on the pictures' clock: each is played when
+// the picture of the same moment is shown, one after the other without gaps.
+// Where it plays: on both (the default; works on every phone) or here only
+// (the phone turns its own volume down, which on some phones also silences
+// what is captured: the phone then notices and turns it back up). The choice
+// is kept on this computer and sent to the phone.
+
+var MIRROR_SOUND_KEY = 'ayva-phone-sound'; // (a new name: the default changed to both)
+
+function mirrorSoundWhere() {
+  return storageGet(MIRROR_SOUND_KEY) === 'pc' ? 'pc' : 'both';
+}
+
+// Where the phone's sound comes out here: Windows' default output unless
+// another is picked in the window (not the "phone's voice" output of Talk,
+// which is often set to the speakers).
+var MIRROR_OUTPUT_KEY = 'ayva-phone-sound-output';
+
+// How loud the phone's sound plays here, in percent (up to 200: a quiet phone
+// can be raised). Kept on this computer.
+var MIRROR_VOLUME_KEY = 'ayva-phone-sound-volume';
+
+function mirrorVolume() {
+  var v = Number(storageGet(MIRROR_VOLUME_KEY));
+  return storageGet(MIRROR_VOLUME_KEY) !== null && v >= 0 && v <= 200 ? v : 100;
+}
+
+function wireMirrorVolume(m, doc) {
+  var slider = doc.getElementById('volume');
+  var show = function () {
+    slider.title = slider.value + ' %';
+    doc.getElementById('volumeIcon').textContent = Number(slider.value) === 0 ? '🔇' : '🔊';
+  };
+  slider.value = String(mirrorVolume());
+  show();
+  slider.oninput = function () {
+    storageSet(MIRROR_VOLUME_KEY, slider.value);
+    if (m.gain) m.gain.gain.value = Number(slider.value) / 100;
+    show();
+  };
+}
+
+function fillMirrorOutputs(m, select) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices || !window.AudioContext
+      || !('setSinkId' in AudioContext.prototype)) {
+    select.hidden = true;
+    return;
+  }
+  navigator.mediaDevices.enumerateDevices().then(function (devices) {
+    var outputs = devices.filter(function (d) {
+      return d.kind === 'audiooutput' && d.deviceId !== 'default' && d.deviceId !== 'communications';
+    });
+    var doc = select.ownerDocument;
+    select.innerHTML = '';
+    var first = doc.createElement('option');
+    first.value = '';
+    first.textContent = t('mirrorOutputDefault');
+    select.appendChild(first);
+    outputs.forEach(function (d) {
+      var o = doc.createElement('option');
+      o.value = d.deviceId;
+      o.textContent = d.label || d.deviceId.slice(0, 8);
+      select.appendChild(o);
+    });
+    var current = storageGet(MIRROR_OUTPUT_KEY) || '';
+    select.value = outputs.some(function (d) { return d.deviceId === current; }) ? current : '';
+    select.hidden = !outputs.length;
+  }).catch(function () { select.hidden = true; });
+  select.onchange = function () {
+    storageSet(MIRROR_OUTPUT_KEY, select.value);
+    if (m.actx && m.actx.setSinkId) m.actx.setSinkId(select.value).catch(function () {});
+  };
+}
+
+function sendMirrorSound(m) {
+  if (m.dc && m.dc.readyState === 'open') m.dc.send(JSON.stringify({ t: 'sound', where: mirrorSoundWhere() }));
+}
+
+function mirrorAudio(m, time, data) {
+  // Needs the pictures' timing first; and gives up for good if this computer can't decode it.
+  if (m.audioBroken || m.base === undefined) return;
+  if (!m.actx) {
+    try {
+      m.actx = new AudioContext({ latencyHint: 'interactive', sampleRate: 48000 });
+      var out = storageGet(MIRROR_OUTPUT_KEY) || '';
+      if (out && m.actx.setSinkId) m.actx.setSinkId(out).catch(function () {});
+      // How loud here (the window's slider), between the sound and the speakers.
+      m.gain = m.actx.createGain();
+      m.gain.gain.value = mirrorVolume() / 100;
+      m.gain.connect(m.actx.destination);
+      m.adec = new AudioDecoder({
+        output: function (a) { playMirrorAudio(m, a); },
+        error: function () { m.audioBroken = true; },
+      });
+      m.adec.configure({ codec: 'opus', sampleRate: 48000, numberOfChannels: 2 });
+    } catch (e) {
+      m.audioBroken = true;
+      return;
+    }
+  }
+  if (m.adec.state !== 'configured') return;
+  try {
+    m.adec.decode(new EncodedAudioChunk({ type: 'key', timestamp: time, data: data }));
+  } catch (e) { /* one packet less */ }
+}
+
+function playMirrorAudio(m, a) {
+  var ctx = m.actx;
+  if (!ctx || ctx.state === 'closed' || m.base === undefined) {
+    a.close();
+    return;
+  }
+  if (ctx.state === 'suspended') ctx.resume().catch(function () {});
+  var buf = ctx.createBuffer(a.numberOfChannels, a.numberOfFrames, a.sampleRate);
+  for (var ch = 0; ch < a.numberOfChannels; ch++) {
+    var plane = new Float32Array(a.numberOfFrames);
+    a.copyTo(plane, { planeIndex: ch, format: 'f32-planar' });
+    buf.copyToChannel(plane, ch);
+  }
+  var due = a.timestamp / 1000 + m.base + MIRROR_DELAY_MS;
+  a.close();
+  // Heard at "due": started that much earlier than the output's own delay.
+  var latency = (ctx.outputLatency || 0) + (ctx.baseLatency || 0);
+  var at = ctx.currentTime + (due - performance.now()) / 1000 - latency;
+  if (m.audioNext) {
+    // Right after the previous packet: no gap, no overlap.
+    if (Math.abs(at - m.audioNext) < 0.04) at = m.audioNext;
+    else if (at < m.audioNext) {
+      if (m.audioNext - at > 0.25) return; // far behind: let this one go to catch up
+      at = m.audioNext;
+    }
+  }
+  var soonest = ctx.currentTime + 0.01;
+  if (at < soonest) {
+    m.stat.soundLate++;
+    at = soonest;
+  }
+  var src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(m.gain || ctx.destination);
+  src.start(at);
+  m.audioNext = at + buf.duration;
+}
+
+function stopMirrorAudio(m) {
+  if (m.adec && m.adec.state !== 'closed') m.adec.close();
+  if (m.actx && m.actx.state !== 'closed') m.actx.close().catch(function () {});
+  m.adec = null;
+  m.gain = null;
+  m.actx = null;
+}
+
+// The window takes the picture's shape, as large as fits on its screen.
+// False while it is minimized (its sizes mean nothing then): try again later.
+function fitMirrorWindow(m, w, h) {
+  var win = m.win;
+  if (win.document.fullscreenElement) return true;
+  var extraW = win.outerWidth - win.innerWidth;
+  var extraH = win.outerHeight - win.innerHeight;
+  if (extraW < 0 || extraH < 0) return false;
+  var s = Math.min((win.screen.availWidth * 0.9) / w, (win.screen.availHeight * 0.85) / h, 1);
+  try {
+    win.resizeTo(Math.round(w * s + extraW), Math.round(h * s + extraH));
+  } catch (e) { /* stays as it is */ }
+  return true;
+}
+
+// tell: also let the phone know (not when it is the one that stopped).
+// reason (optional, see MIRROR_END): the window then stays open, saying why it
+// ended, until it is closed. Without one (closed or stopped here, right taken
+// away) the window closes. cause (optional): which of those it was here, in
+// [brackets] after the reason in the history, for tracking down stops.
+function closeMirror(id, tell, reason, cause) {
+  var m = mirrors[id];
+  if (!m) return;
+  delete mirrors[id];
+  // How long it went and why it ended, for when it stops by itself;
+  // the exact code path shows as the row's tooltip.
+  logEvent('mirrorEnd', viewerInfo[id], Date.now() - m.startedAt,
+    t(reason ? MIRROR_END[reason] || 'mirrorEndConnection' : 'mirrorEndHere'), cause || reason);
+  if (viewerInfo[id]) refreshStreamsTo(viewerInfo[id].deviceId);
+  clearInterval(m.watch);
+  if (tell && viewerSignal[id]) viaSignal(id).send({ type: 'signal', to: id, data: { kind: 'screen-stop' } });
+  if (m.pc) m.pc.close();
+  if (m.decoder && m.decoder.state !== 'closed') m.decoder.close();
+  dropMirrorQueue(m);
+  stopMirrorControl(m);
+  stopMirrorAudio(m);
+  if (!m.win.closed) {
+    if (m.statsTimer) m.win.clearInterval(m.statsTimer);
+    if (reason && m.status) {
+      m.status.textContent = t(MIRROR_END[reason] || 'mirrorEndConnection');
+      m.win.document.getElementById('stopBtn').textContent = t('mirrorClose');
+    } else {
+      m.win.close();
+    }
+  }
+  renderDevices();
+  // Known only through this connection (its server connection had dropped): gone now.
+  if (orphaned[id] && !peerAlive(id)) viewerLeft(id);
+}
+
+// A right taken away (box unticked, device forgotten, new PIN): its window closes.
+function checkMirrors() {
+  Object.keys(mirrors || {}).forEach(function (id) {
+    if (!mayMirror(id)) closeMirror(id, true, null, 'right-gone');
+    else startMirrorControl(id, mirrors[id]); // control turned on or off
+  });
+  Object.keys(cameras || {}).forEach(function (id) {
+    if (!mayCamera(id)) closeCamera(id, true);
+  });
+}
+
+// ---- A phone's camera in a window here ----
+// A remembered (proven) device whose "Can show its camera" box is ticked may
+// send its camera over a WebRTC connection of its own (the phone offers, as
+// with the microphone; camera.js). It is shown in the same kind of window as
+// a phone's screen. A notification every time.
+
+var cameras = {}; // viewer id -> { pc, win, video }
+
+function mayCamera(id) {
+  return !!window.ayva && deviceRight(id, 'canCamera');
+}
+
+function cameraOffer(id, sdp) {
+  closeCamera(id, false);
+  var info = viewerInfo[id];
+  var reply = function (data) { viaSignal(id).send({ type: 'signal', to: id, data: data }); };
+  if (!mayCamera(id) || !sdp) {
+    reply({ kind: 'camera-refused' });
+    return;
+  }
+  var win = window.open('/mirror.html', 'ayva-camera-' + Date.now());
+  if (!win) {
+    reply({ kind: 'camera-stop' });
+    return;
+  }
+  var c = { win: win, pc: null, video: null, stream: null };
+  cameras[id] = c;
+  var title = t('cameraTitle').replace('{who}', deviceLabel(info));
+  logEvent('camera', info);
+  window.ayva.notify(title, '');
+  cameraWindowReady(id, c, title);
+  renderDevices();
+
+  // The phone's offer carries no relay addresses; this side's are enough.
+  turnFor(id).then(function (creds) {
+    if (cameras[id] !== c) return;
+    var pc = new RTCPeerConnection(peerConfig(creds));
+    c.pc = pc;
+    pc.ontrack = function (e) {
+      c.stream = e.streams[0] || new MediaStream([e.track]);
+      if (c.video) c.video.srcObject = c.stream;
+    };
+    pc.onicecandidate = function (e) {
+      if (e.candidate) reply({ kind: 'camera-candidate', candidate: e.candidate });
+    };
+    pc.onconnectionstatechange = function () {
+      if ((pc.connectionState === 'failed' || pc.connectionState === 'closed') && cameras[id] === c) closeCamera(id, false);
+    };
+    pc.setRemoteDescription(sdp)
+      .then(function () {
+        flushCandidates(pc);
+        return pc.createAnswer();
+      })
+      .then(function (answer) { return pc.setLocalDescription(answer); })
+      .then(function () { reply({ kind: 'camera-answer', sdp: pc.localDescription }); })
+      .catch(function () { if (cameras[id] === c) closeCamera(id, true); });
+  });
+}
+
+function cameraWindowReady(id, c, title) {
+  var tries = 0;
+  var wired = false;
+  c.win.addEventListener('load', check);
+  check();
+  function check() {
+    if (cameras[id] !== c || wired) return;
+    var doc = null;
+    try { doc = c.win.document; } catch (e) { /* not loaded yet */ }
+    if (!doc || doc.readyState !== 'complete' || !doc.getElementById('video')) {
+      if (++tries < 100 && !c.win.closed) setTimeout(check, 50);
+      else if (tries >= 100) closeCamera(id, true);
+      return;
+    }
+    wired = true;
+    doc.title = title;
+    doc.documentElement.lang = LANG;
+    doc.getElementById('screen').hidden = true;
+    doc.getElementById('soundBtn').hidden = true; // the camera comes without sound
+    doc.getElementById('volumeBox').hidden = true;
+    c.video = doc.getElementById('video');
+    c.video.hidden = false;
+    if (c.stream) c.video.srcObject = c.stream;
+    // The window takes the camera's shape once its size is known (and again
+    // when it turns); it may be known already when the window is ready.
+    var fit = function () {
+      if (c.video.videoWidth) c.sized = fitMirrorWindow(c, c.video.videoWidth, c.video.videoHeight);
+    };
+    c.video.addEventListener('loadedmetadata', fit);
+    c.video.addEventListener('resize', fit);
+    // Opened minimized: shaped once it is brought up.
+    c.win.addEventListener('resize', function () { if (!c.sized) fit(); });
+    fit();
+    var status = doc.getElementById('status');
+    status.textContent = t('mirrorWaiting');
+    c.video.addEventListener('playing', function () { status.textContent = ''; });
+    doc.getElementById('stopBtn').textContent = t('mirrorStop');
+    doc.getElementById('stopBtn').onclick = function () { closeCamera(id, true); };
+    var full = function () {
+      if (doc.fullscreenElement) doc.exitFullscreen();
+      else doc.documentElement.requestFullscreen().catch(function () {});
+    };
+    doc.getElementById('fullBtn').textContent = t('fullscreen');
+    doc.getElementById('fullBtn').onclick = full;
+    c.video.ondblclick = full;
+    c.win.addEventListener('pagehide', function () { if (cameras[id] === c) closeCamera(id, true); });
+    c.watch = setInterval(function () { if (c.win.closed && cameras[id] === c) closeCamera(id, true); }, 1000);
+  }
+}
+
+// tell: also let the phone know (not when it is the one that stopped).
+function closeCamera(id, tell) {
+  var c = cameras[id];
+  if (!c) return;
+  delete cameras[id];
+  clearInterval(c.watch);
+  if (tell && viewerSignal[id]) viaSignal(id).send({ type: 'signal', to: id, data: { kind: 'camera-stop' } });
+  if (c.pc) c.pc.close();
+  if (!c.win.closed) c.win.close();
   renderDevices();
 }
 
@@ -1854,7 +2882,7 @@ function peerAlive(id) {
 }
 
 function signalingLost(id) {
-  if (!peerAlive(id)) {
+  if (!peerAlive(id) && !mirrorAlive(id)) {
     viewerLeft(id);
     return;
   }
@@ -1871,6 +2899,8 @@ function viewerLeft(id) {
   delete orphaned[id];
   dropRequest(id);
   closeMic(id);
+  closeMirror(id, false, null, 'viewer-left');
+  closeCamera(id, false);
   delete viewerInfo[id];
   renderDevices();
   closePeer(id);
@@ -2122,7 +3152,7 @@ var HISTORY_TEXT = {
   kicked: 'histKicked', proofFailed: 'histProofFailed', pinWrong: 'histPinWrong',
   pinLocked: 'histPinLocked', remoteStart: 'remoteStarted', remoteStop: 'remoteStopped',
   remoteFailed: 'histRemoteFailed', recording: 'histRecording', talking: 'histTalking',
-  privacy: 'histPrivacy', screen: 'histScreen',
+  privacy: 'histPrivacy', screen: 'histScreen', mirroring: 'histMirroring', mirrorEnd: 'histMirrorEnd', camera: 'histCamera',
 };
 var HISTORY_ALERT = { denied: true, proofFailed: true, pinWrong: true, pinLocked: true };
 var connHistory = [];
@@ -2133,9 +3163,10 @@ try {
   connHistory = [];
 }
 
-function logEvent(event, info, ms, what) {
+function logEvent(event, info, ms, what, cause) {
   var entry = { at: Date.now(), e: event, who: deviceLabel(info) };
   if (what) entry.what = what;
+  if (cause) entry.cause = cause;
   if (event === 'joined') entry.via = info && info.remote ? 'internet' : 'lan';
   if (ms) entry.ms = ms;
   connHistory.push(entry);
@@ -2177,6 +3208,7 @@ function renderHistory() {
       .replace('{time}', durationText(h.ms))
       .replace('{screen}', h.what || '')
       .replace(/\.$/, '');
+    if (h.cause) row.title = h.cause;
     row.appendChild(when);
     row.appendChild(what);
     box.appendChild(row);
