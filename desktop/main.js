@@ -610,6 +610,15 @@ function createWindow(port) {
     return { action: 'deny' };
   });
 
+  // The window stays on the share page: it has no Back to return from another
+  // one (the home page's "Watch on TV" left it stuck). Outside links open in
+  // the normal browser instead.
+  win.webContents.on('will-navigate', (e, url) => {
+    if (url.startsWith('http://localhost:' + port + '/share')) return;
+    e.preventDefault();
+    if (!url.startsWith('http://localhost:' + port + '/')) shell.openExternal(url);
+  });
+
   // A phone's screen or camera shows up even while Ayva itself is minimized
   // or in the tray (a window opened from a minimized one starts minimized).
   win.webContents.on('did-create-window', (child) => {
