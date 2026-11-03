@@ -38,4 +38,10 @@
     <string name="screen_end_system">"Showing the screen stopped last time because Android ended the screen capture. Tap to hide."</string>
     <string name="screen_end_locked">"Showing the screen stopped last time because the phone's screen turned off or locked. Tap to hide."</string>
     <string name="screen_end_failed">"Showing the screen stopped last time because the phone's encoder failed. Tap to hide."</string>
+    <string name="section_computers">Computers</string>
+    <string name="section_connect">Connect</string>
+    <string name="live_status">Sharing its screen</string>
+    <string name="fixed_address">Fixed address</string>
+    <string name="tile_scan">Scan the QR code</string>
+    <string name="tile_address">Add fixed address</string>
 </resources>

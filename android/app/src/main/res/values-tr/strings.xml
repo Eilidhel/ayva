@@ -38,4 +38,10 @@
     <string name="screen_end_system">"Ekranı gösterme geçen sefer durdu çünkü Android ekran kaydını bitirdi. Gizlemek için dokun."</string>
     <string name="screen_end_locked">"Ekranı gösterme geçen sefer durdu çünkü telefonun ekranı kapandı ya da kilitlendi. Gizlemek için dokun."</string>
     <string name="screen_end_failed">"Ekranı gösterme geçen sefer durdu çünkü telefonun kodlayıcısı hata verdi. Gizlemek için dokun."</string>
+    <string name="section_computers">Bilgisayarlar</string>
+    <string name="section_connect">Bağlan</string>
+    <string name="live_status">Ekranını paylaşıyor</string>
+    <string name="fixed_address">Sabit adres</string>
+    <string name="tile_scan">QR kodu tara</string>
+    <string name="tile_address">Sabit adres ekle</string>
 </resources>

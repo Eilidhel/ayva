@@ -47,11 +47,17 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
 
     // Quince colours, same as the web pages (public/style.css).
     private static final int BG = 0xFF16130E;
+    private static final int CARD = 0xFF201C15;
     private static final int PANEL = 0xFF2C271D;
+    private static final int PANEL_3 = 0xFF3A3326;
+    private static final int TEXT = 0xFFF4EFE4;
     private static final int ACCENT = 0xFFF2C14E;
     private static final int ON_ACCENT = 0xFF2A1D05;
     private static final int MUTED = 0xFFA89F8C;
-    private static final int LIVE_BG = 0xFF3A2418;
+    private static final int FAINT = 0xFF6F6552;
+    private static final int LIVE = 0xFFE5484D;
+    private static final int LIVE_BG = 0xFF2A1A17;
+    private static final int OK = 0xFF7CC46E;
     private static final long AUTO_CONNECT_WINDOW_MS = 4000;
     private static final int SCAN = 1;
 
@@ -115,18 +121,20 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         if (focused != null && focused.getTag() instanceof String) focusedKey = (String) focused.getTag();
 
         list.removeAllViews();
-        Button toFocus = addUpdateButton();
+        View toFocus = addUpdateButton();
+        boolean phone = !isTv();
+        if (!lastHosts.isEmpty() || (phone && !addresses().isEmpty())) list.addView(section(R.string.section_computers));
         for (final Discovery.Host host : lastHosts) {
-            String status = host.live ? "  ●  " + getString(R.string.live) : "  ·  " + getString(R.string.ready);
-            Button b = hostButton(host.name + status, host.live, v -> open(host));
-            b.setTag(host.key());
-            list.addView(b);
-            if (toFocus == null) toFocus = b;
+            View card = card("🖥", host.name, getString(host.live ? R.string.live_status : R.string.ready),
+                    host.live ? LIVE : OK, host.live, v -> open(host));
+            card.setTag(host.key());
+            list.addView(card);
+            if (toFocus == null) toFocus = card;
         }
-        if (!isTv()) addAddressButtons();
+        if (phone) addAddressButtons();
         list.addView(versionButton());
         View same = list.findViewWithTag(focusedKey);
-        if (same != null) toFocus = (Button) same;
+        if (same != null) toFocus = same;
         if (toFocus != null) toFocus.requestFocus();
     }
 
@@ -212,8 +220,8 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
 
     private boolean checkAsked;
 
-    // The update button, while there is something to show; null otherwise.
-    private Button addUpdateButton() {
+    // The update strip, while there is something to show; null otherwise.
+    private View addUpdateButton() {
         String label;
         switch (updater.state()) {
             case AVAILABLE: label = getString(R.string.update_available, updater.latestVersion()); break;
@@ -221,7 +229,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
             case INSTALLING: label = getString(R.string.update_installing); break;
             default: return null;
         }
-        Button b = hostButton(label, true, v -> updater.install());
+        Button b = strip(label, v -> updater.install());
         b.setTag("update");
         list.addView(b);
         return b;
@@ -236,12 +244,25 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
             case FAILED: label = R.string.version_check_failed; break;
             default: label = R.string.version_check;
         }
-        Button b = hostButton(getString(label, v), false, x -> {
+        Button b = new Button(this);
+        b.setAllCaps(false);
+        b.setText(getString(label, v));
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        b.setTextColor(new ColorStateList(
+                new int[][]{{android.R.attr.state_focused}, {android.R.attr.state_pressed}, {}},
+                new int[]{TEXT, TEXT, FAINT}));
+        b.setBackground(states(Color.TRANSPARENT, Color.TRANSPARENT, Color.TRANSPARENT, 999));
+        b.setPadding(dp(16), dp(8), dp(16), dp(8));
+        b.setOnClickListener(x -> {
             checkAsked = true;
             updater.check(true);
         });
         b.setTag("version");
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.gravity = Gravity.CENTER_HORIZONTAL;
+        lp.topMargin = dp(18);
+        b.setLayoutParams(lp);
         return b;
     }
 
@@ -292,14 +313,12 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         saveAddresses(addresses);
     }
 
+    // Fixed addresses as cards (a long press removes one), then two tiles to connect.
     private void addAddressButtons() {
-        if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-            list.addView(hostButton(getString(R.string.scan_qr), false,
-                    v -> startActivityForResult(new Intent(this, ScanActivity.class), SCAN)));
-        }
         for (final String address : addresses()) {
             final String host = Uri.parse(address).getHost();
-            Button b = hostButton("🌐  " + host, false, v -> openUrl(address));
+            View b = card("🌐", getString(R.string.fixed_address), host, OK, false, v -> openUrl(address));
+            b.setTag(address);
             b.setOnLongClickListener(v -> {
                 new AlertDialog.Builder(this)
                         .setMessage(getString(R.string.remove_address, host))
@@ -314,7 +333,20 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
             });
             list.addView(b);
         }
-        list.addView(hostButton(getString(R.string.add_address), false, v -> askAddress()));
+        list.addView(section(R.string.section_connect));
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+            row.addView(tile("📷", getString(R.string.tile_scan), true,
+                    v -> startActivityForResult(new Intent(this, ScanActivity.class), SCAN)));
+        }
+        row.addView(tile("🔗", getString(R.string.tile_address), false, v -> askAddress()));
+        if (row.getChildCount() == 2) {
+            ((LinearLayout.LayoutParams) row.getChildAt(0).getLayoutParams()).rightMargin = dp(5);
+            ((LinearLayout.LayoutParams) row.getChildAt(1).getLayoutParams()).leftMargin = dp(5);
+        }
+        list.addView(row, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
     }
 
     private void askAddress() {
@@ -359,20 +391,22 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         header.setGravity(Gravity.CENTER_VERTICAL);
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.mipmap.ic_launcher);
-        header.addView(logo, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        TextView name = text(getString(R.string.app_name), 30, Color.WHITE);
+        header.addView(logo, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        TextView name = text(getString(R.string.app_name), 28, TEXT);
         name.setTypeface(Typeface.DEFAULT_BOLD);
         name.setPadding(dp(12), 0, 0, 0);
         header.addView(name);
         root.addView(header);
 
-        title = text(getString(R.string.searching), 20, Color.WHITE);
-        title.setPadding(0, dp(24), 0, dp(4));
+        title = text(getString(R.string.searching), 17, TEXT);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setGravity(Gravity.CENTER);
+        title.setPadding(0, dp(22), 0, dp(4));
         root.addView(title);
 
-        help = text(getString(isTv() ? R.string.help : R.string.help_phone), 15, MUTED);
+        help = text(getString(isTv() ? R.string.help : R.string.help_phone), 14, MUTED);
         help.setGravity(Gravity.CENTER);
-        help.setPadding(0, 0, 0, dp(16));
+        help.setPadding(0, 0, 0, dp(14));
         root.addView(help);
 
         ScrollView scroll = new ScrollView(this);
@@ -384,26 +418,109 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         return root;
     }
 
-    private Button hostButton(String label, boolean live, View.OnClickListener onClick) {
+    // A small heading over a group ("Computers", "Connect").
+    private TextView section(int res) {
+        TextView tv = text(getString(res), 13, MUTED);
+        tv.setPadding(dp(4), dp(14), 0, dp(8));
+        return tv;
+    }
+
+    // A computer or fixed address: an icon in a box, the name, a coloured dot
+    // and its state; a LIVE pill while it shares. Focused (TV remote) or
+    // pressed, it gets a gold frame.
+    private View card(String icon, String name, String state, int dot, boolean live, View.OnClickListener onClick) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.HORIZONTAL);
+        c.setGravity(Gravity.CENTER_VERTICAL);
+        c.setPadding(dp(12), dp(12), dp(14), dp(12));
+        int bg = live ? LIVE_BG : CARD;
+        c.setBackground(states(bg, bg, live ? 0x66E5484D : PANEL, 18));
+        c.setFocusable(true);
+        c.setClickable(true);
+        c.setOnClickListener(onClick);
+
+        TextView box = text(icon, 20, ACCENT);
+        box.setGravity(Gravity.CENTER);
+        box.setBackground(rounded(PANEL, 12));
+        c.addView(box, new LinearLayout.LayoutParams(dp(44), dp(44)));
+
+        LinearLayout words = new LinearLayout(this);
+        words.setOrientation(LinearLayout.VERTICAL);
+        words.setPadding(dp(12), 0, dp(8), 0);
+        TextView n = text(name, 17, TEXT);
+        n.setTypeface(Typeface.DEFAULT_BOLD);
+        n.setSingleLine(true);
+        n.setEllipsize(TextUtils.TruncateAt.END);
+        words.addView(n);
+        TextView st = text("●  " + state, 13, MUTED);
+        android.text.SpannableString sp = new android.text.SpannableString(st.getText());
+        sp.setSpan(new android.text.style.ForegroundColorSpan(dot), 0, 1, 0);
+        st.setText(sp);
+        st.setSingleLine(true);
+        st.setEllipsize(TextUtils.TruncateAt.END);
+        words.addView(st);
+        c.addView(words, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+
+        if (live) {
+            TextView pill = text(getString(R.string.live), 11, Color.WHITE);
+            pill.setTypeface(Typeface.DEFAULT_BOLD);
+            pill.setPadding(dp(9), dp(3), dp(9), dp(3));
+            pill.setBackground(rounded(LIVE, 999));
+            c.addView(pill);
+        } else {
+            c.addView(text("›", 22, MUTED));
+        }
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = dp(8);
+        c.setLayoutParams(lp);
+        return c;
+    }
+
+    // A square tile to connect (scan the QR code, add a fixed address): a big
+    // icon over its name; the first one is gold.
+    private View tile(String icon, String label, boolean main, View.OnClickListener onClick) {
+        LinearLayout t = new LinearLayout(this);
+        t.setOrientation(LinearLayout.VERTICAL);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(dp(8), dp(18), dp(8), dp(16));
+        int bg = main ? ACCENT : CARD;
+        t.setBackground(states(bg, main ? 0xFFE0A92A : PANEL, main ? ACCENT : PANEL, 18));
+        t.setFocusable(true);
+        t.setClickable(true);
+        t.setOnClickListener(onClick);
+        TextView i = text(icon, 26, main ? ON_ACCENT : ACCENT);
+        i.setGravity(Gravity.CENTER);
+        t.addView(i);
+        TextView l = text(label, 14, main ? ON_ACCENT : TEXT);
+        l.setTypeface(Typeface.DEFAULT_BOLD);
+        l.setGravity(Gravity.CENTER);
+        l.setPadding(0, dp(8), 0, 0);
+        t.addView(l);
+        t.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        return t;
+    }
+
+    // The update offer: a thin gold-framed strip, not a big button.
+    private Button strip(String label, View.OnClickListener onClick) {
         Button b = new Button(this);
         b.setAllCaps(false);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        // Dark text on the gold focus highlight, light text otherwise.
+        b.setText(label);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         b.setTextColor(new ColorStateList(
                 new int[][]{{android.R.attr.state_focused}, {android.R.attr.state_pressed}, {}},
-                new int[]{ON_ACCENT, ON_ACCENT, Color.WHITE}));
+                new int[]{ON_ACCENT, ON_ACCENT, TEXT}));
         b.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        b.setPadding(dp(20), dp(16), dp(20), dp(16));
-        b.setText(label);
-
+        b.setPadding(dp(16), dp(12), dp(16), dp(12));
         StateListDrawable bg = new StateListDrawable();
-        bg.addState(new int[]{android.R.attr.state_focused}, rounded(ACCENT));
-        bg.addState(new int[]{android.R.attr.state_pressed}, rounded(ACCENT));
-        bg.addState(new int[]{}, rounded(live ? LIVE_BG : PANEL));
+        bg.addState(new int[]{android.R.attr.state_focused}, rounded(ACCENT, 14));
+        bg.addState(new int[]{android.R.attr.state_pressed}, rounded(ACCENT, 14));
+        GradientDrawable idle = rounded(0x1FF2C14E, 14);
+        idle.setStroke(dp(1), 0x99F2C14E);
+        bg.addState(new int[]{}, idle);
         b.setBackground(bg);
-        b.setFocusable(true);
         b.setOnClickListener(onClick);
-
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.bottomMargin = dp(10);
@@ -411,10 +528,26 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         return b;
     }
 
-    private GradientDrawable rounded(int color) {
+    // Resting, pressed and focused looks; focused and pressed get a gold frame
+    // (what the TV remote is on must be clear from across the room).
+    private StateListDrawable states(int rest, int pressed, int border, int radius) {
+        StateListDrawable d = new StateListDrawable();
+        GradientDrawable focus = rounded(pressed == rest ? PANEL : pressed, radius);
+        focus.setStroke(dp(2), ACCENT);
+        GradientDrawable down = rounded(pressed == rest ? PANEL : pressed, radius);
+        down.setStroke(dp(2), ACCENT);
+        GradientDrawable idle = rounded(rest, radius);
+        if (border != Color.TRANSPARENT) idle.setStroke(dp(1), border);
+        d.addState(new int[]{android.R.attr.state_focused}, focus);
+        d.addState(new int[]{android.R.attr.state_pressed}, down);
+        d.addState(new int[]{}, idle);
+        return d;
+    }
+
+    private GradientDrawable rounded(int color, int radius) {
         GradientDrawable d = new GradientDrawable();
         d.setColor(color);
-        d.setCornerRadius(dp(12));
+        d.setCornerRadius(dp(radius));
         return d;
     }
 
