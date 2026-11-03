@@ -353,10 +353,9 @@ var STRINGS = {
     cameraTag: 'showing its camera',
     histCamera: '{who} showed its camera',
     cameraTitle: '{who} is showing its camera',
-    // Controlling the phone from the computer (not offered yet: see share.js)
+    // Controlling the phone from the computer (over ADB: see share.js)
     canControlPhone: 'Can be controlled from here',
     canControlPhoneHint: 'While this phone shows its screen here, the mouse taps and swipes on it, and Back, Home and Recents work. The phone is paired once over Wireless debugging (from its window).',
-    mirrorControlOff: 'Control is off on the phone: tap "Allow control" there.',
     // Control over ADB (desktop/adb.js; the mirror window's pairing panel)
     adbSetUp: 'Set up control',
     adbConnecting: 'Connecting to the phone for control…',
@@ -737,7 +736,6 @@ var STRINGS = {
     cameraTitle: '{who} kamerasını gösteriyor',
     canControlPhone: 'Buradan kontrol edilebilir',
     canControlPhoneHint: 'Bu telefon ekranını burada gösterirken fareyle dokunup kaydırabilir; Geri, Ana ekran ve Son uygulamalar düğmelerini kullanabilirsin. Telefon bir kez Kablosuz hata ayıklama ile eşleştirilir (penceresinden).',
-    mirrorControlOff: 'Telefonda kontrol izni kapalı: telefonda "Kontrole izin ver"e bas.',
     adbSetUp: 'Kontrolü ayarla',
     adbConnecting: 'Kontrol için telefona bağlanılıyor…',
     adbNotReady: 'Kontrol ayarlı değil ya da telefona ulaşılamıyor: "Kontrolü ayarla"ya bas.',
