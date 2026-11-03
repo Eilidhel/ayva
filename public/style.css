@@ -1128,3 +1128,5 @@ button.wait-warn::before {
 }
 button.wait-warn::after { content: '›'; margin-left: auto; color: var(--accent); font-size: 1.2rem; }
 button.wait-warn:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.lang-select { padding: 6px 10px; font-size: 0.9rem; }
+.setting-row select { min-width: 160px; }

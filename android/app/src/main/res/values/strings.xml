@@ -64,4 +64,7 @@
     <string name="link_title">Open this address?</string>
     <string name="link_message">%1$s\n\nOpen it only if it is the address shown in Ayva on your own computer.</string>
     <string name="link_open">Open</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_in_use">In use</string>
+    <string name="settings_use">Use this language</string>
 </resources>

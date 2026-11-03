@@ -41,7 +41,7 @@ You can also use the **Send files to TV** app or `adb install Ayva-Android.apk`.
 3. **TV:** open Ayva on the TV. **Phone at home:** open the address shown under "On the TV open". **Phone elsewhere:** see below.
 4. The first time a device connects, the computer asks **Allow / Deny**. Tick **Remember this device** to skip the question next time.
 
-The Ayva window has its sections on the left: **Share**, **Watch** (a phone's screen or camera here), **Devices**, **Remote access**, **History** and **Settings**. The **‹** under the logo folds them to icons only. The grip in the bottom-right corner makes the window bigger or smaller, and **Settings → Colours** picks one of six colour themes (the phone has the same under **More**).
+The Ayva window has its sections on the left: **Share**, **Watch** (a phone's screen or camera here), **Devices**, **Remote access**, **History** and **Settings**. The **‹** under the logo folds them to icons only. The grip in the bottom-right corner makes the window bigger or smaller, and **Settings → Colours** picks one of six colour themes (the phone has the same under **More**). Ayva is in English unless you choose **Türkçe** under **Settings → Language** (on the phone: **More → View**; in the Android app: its own **Settings**).
 
 The code and this computer's addresses are **blurred** until you press **Show**, from the moment Ayva opens, so nobody can read them off your screen; they blur again whenever sharing starts or stops.
 

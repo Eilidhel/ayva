@@ -3,6 +3,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 if (/^\/share(\.html)?$/.test(location.pathname)) contextBridge.exposeInMainWorld('ayva', {
+  // The language chosen in Settings, there before the page draws itself.
+  language: ipcRenderer.sendSync('get-language'),
+  setLanguage: (lang) => ipcRenderer.send('set-language', lang),
   getSources: () => ipcRenderer.invoke('get-sources'),
   selectSource: (sourceId, audio) => ipcRenderer.invoke('select-source', { sourceId, audio }),
   remoteStart: (audio, sourceId) => ipcRenderer.invoke('remote-start', audio, sourceId),

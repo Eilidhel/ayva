@@ -39,7 +39,7 @@ Bilgisayarda Ayva'yı aç ve **Paylaşımı başlat**a bas. TV uygulaması bilgi
 3. **TV:** TV'de Ayva'yı aç. **Evdeki telefon:** "TV'de şunu aç" altındaki adresi aç. **Dışarıdaki telefon:** aşağıdaki bölüme bak.
 4. Bir cihaz ilk kez bağlandığında bilgisayar **İzin ver / Reddet** diye sorar. **Bu cihazı hatırla** işaretliyse bir dahaki sefere sormaz.
 
-Ayva penceresinin bölümleri soldadır: **Paylaş**, **İzle** (bir telefonun ekranı ya da kamerası burada), **Cihazlar**, **Uzaktan erişim**, **Geçmiş** ve **Ayarlar**. Logonun altındaki **‹** onları yalnızca simgelere daraltır. Sağ alt köşedeki tutamak pencereyi büyütür ya da küçültür; **Ayarlar → Renkler** altı renk temasından birini seçer (telefonda aynısı **Daha** altında).
+Ayva penceresinin bölümleri soldadır: **Paylaş**, **İzle** (bir telefonun ekranı ya da kamerası burada), **Cihazlar**, **Uzaktan erişim**, **Geçmiş** ve **Ayarlar**. Logonun altındaki **‹** onları yalnızca simgelere daraltır. Sağ alt köşedeki tutamak pencereyi büyütür ya da küçültür; **Ayarlar → Renkler** altı renk temasından birini seçer (telefonda aynısı **Daha** altında). Ayva, **Ayarlar → Dil** altından **Türkçe** seçilmedikçe İngilizcedir (telefonda **Daha → Görünüm**, Android uygulamasında kendi **Ayarlar**'ı).
 
 Kod ve bu bilgisayarın adresleri Ayva açıldığı andan itibaren **Göster**'e basana kadar **bulanıktır**, böylece kimse ekranından okuyamaz; paylaşım her başladığında ya da durduğunda yeniden bulanıklaşır.
 

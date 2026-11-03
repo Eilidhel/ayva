@@ -139,6 +139,12 @@ public class ScreenService extends Service {
         return null;
     }
 
+    // Text in the language chosen in Settings (Lang), not the phone's.
+    @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(Lang.wrap(base));
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null || ACTION_STOP.equals(intent.getAction()) || projection != null) {

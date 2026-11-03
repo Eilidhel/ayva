@@ -85,6 +85,12 @@ public class PlayerActivity extends Activity {
     private ScreenService.Sink screenSink;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
+    // Text in the language chosen in Settings (Lang), not the phone's.
+    @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(Lang.wrap(base));
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

@@ -67,5 +67,6 @@
   fold(storageGet('ayva-rail-folded') === '1');
 
   AyvaTheme.picker($('themes'));
+  langPicker($('langSelect'));
   addResizeGrip(window);
 })();

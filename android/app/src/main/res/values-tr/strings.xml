@@ -64,4 +64,7 @@
     <string name="link_title">Bu adres açılsın mı?</string>
     <string name="link_message">%1$s\n\nYalnızca kendi bilgisayarındaki Ayva\'da görünen adresse aç.</string>
     <string name="link_open">Aç</string>
+    <string name="settings_language">Dil</string>
+    <string name="settings_in_use">Kullanılıyor</string>
+    <string name="settings_use">Bu dili kullan</string>
 </resources>

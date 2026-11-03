@@ -2,6 +2,7 @@ package io.github.ayva.tv;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -55,6 +56,12 @@ public class ScanActivity extends Activity implements TextureView.SurfaceTexture
     private volatile boolean busy;
     private volatile boolean done;
     private final MultiFormatReader reader = new MultiFormatReader();
+
+    // Text in the language chosen in Settings (Lang), not the phone's.
+    @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(Lang.wrap(base));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

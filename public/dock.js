@@ -18,7 +18,7 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && !sheet.hidden) setOpen(false);
   });
-  // An action closes the sheet; picking a colour or opening the screen list doesn't.
+  // An action closes the sheet; picking a colour or a language doesn't.
   sheet.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('button') : null;
     if (b && !b.closest('.themes')) setOpen(false);
@@ -65,4 +65,7 @@
   // In the Android app the colours are chosen in its Settings.
   if (AyvaTheme.fixed) $('themes').parentNode.hidden = true;
   else AyvaTheme.picker($('themes'));
+  // The language too: there, or here in More → View.
+  if (LANG_FIXED) $('langRow').hidden = true;
+  else langPicker($('langSelect'));
 })();

@@ -77,6 +77,12 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
     private String focusedKey;
     private List<Discovery.Host> lastHosts = Collections.emptyList();
 
+    // Text in the language chosen in Settings (Lang), not the phone's.
+    @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(Lang.wrap(base));
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -256,7 +262,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
 
     // app=1 is the TV layout (made for the remote); phones get the touch page.
     private String pageQuery() {
-        return (isTv() ? "app=1&" : "") + "theme=" + theme() + "&name=" + Uri.encode(deviceName());
+        return (isTv() ? "app=1&" : "") + "theme=" + theme() + "&lang=" + Lang.get(this) + "&name=" + Uri.encode(deviceName());
     }
 
     private boolean isTv() {
@@ -349,6 +355,21 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
 
         list.addView(section(R.string.settings_theme));
         list.addView(themeRow());
+
+        list.addView(section(R.string.settings_language));
+        String lang = Lang.get(this);
+        for (int i = 0; i < Lang.CODES.length; i++) {
+            final String code = Lang.CODES[i];
+            boolean on = code.equals(lang);
+            View c = card(on ? "✓" : "", Lang.NAMES[i], getString(on ? R.string.settings_in_use : R.string.settings_use),
+                    on ? OK : MUTED, false, v -> {
+                        if (code.equals(Lang.get(this))) return;
+                        Lang.set(this, code);
+                        recreate();
+                    });
+            c.setTag("lang-" + code);
+            list.addView(c);
+        }
 
         list.addView(section(R.string.settings_app));
         list.addView(card("🔋", getString(R.string.settings_app_info), getString(R.string.settings_app_info_hint),

@@ -500,7 +500,26 @@ function watchDisplays() {
 // Closing the window hides it to the tray icon; the server keeps running, so
 // TVs and phones can still find this computer. "Quit" in the tray menu exits.
 
-const TR = () => app.getLocale().toLowerCase().startsWith('tr'); // only valid once the app is ready
+// The language chosen in Settings (English unless Türkçe was picked), kept
+// in Ayva's data folder; read once the app is ready.
+let uiLang = 'en';
+const langFile = () => path.join(app.getPath('userData'), 'language.json');
+function loadLanguage() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(langFile(), 'utf8')).lang;
+    if (saved === 'tr' || saved === 'en') uiLang = saved;
+  } catch (e) { /* not chosen yet */ }
+}
+const TR = () => uiLang === 'tr';
+ipcMain.on('get-language', (event) => { event.returnValue = uiLang; });
+ipcMain.on('set-language', (event, lang) => {
+  if (!fromOurWindow(event) || (lang !== 'en' && lang !== 'tr')) return;
+  uiLang = lang;
+  try {
+    fs.writeFileSync(langFile(), JSON.stringify({ lang }));
+  } catch (e) { /* kept for this run */ }
+  updateTrayMenu();
+});
 const STARTED_HIDDEN = process.argv.includes('--hidden'); // launched with Windows
 let tray = null;
 let quitting = false;
@@ -660,6 +679,7 @@ function createWindow(port) {
 
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
+  loadLanguage();
   // Encrypted DNS lets Chromium use Encrypted Client Hello, so the address
   // being visited isn't sent in the clear. Some networks block workers.dev by
   // that name; with this, the fixed address keeps working there.

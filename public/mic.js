@@ -83,7 +83,7 @@ var Mic = (function () {
         if (peer.connectionState === 'connected' && state === 'starting') {
           state = 'on';
           update();
-          notice(t('micLive'));
+          notice(t('micLive') + ' ' + t('micEchoNote'));
         } else if (peer.connectionState === 'failed') {
           stop(t('micFailed'));
         }

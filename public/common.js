@@ -378,6 +378,8 @@ var STRINGS = {
     groupComputer: 'Computer',
     groupView: 'View',
     theme: 'Colours',
+    language: 'Language',
+    micEchoNote: 'For the first second or two, you may hear yourself faintly while the computer adjusts.',
     theme_quince: 'Quince',
     theme_sea: 'Sea',
     theme_leaf: 'Leaf',
@@ -802,6 +804,8 @@ var STRINGS = {
     groupComputer: 'Bilgisayar',
     groupView: 'Görünüm',
     theme: 'Renkler',
+    language: 'Dil',
+    micEchoNote: 'İlk bir iki saniye, bilgisayar ayarlanırken kendi sesini hafifçe duyabilirsin.',
     theme_quince: 'Ayva',
     theme_sea: 'Deniz',
     theme_leaf: 'Yaprak',
@@ -853,7 +857,42 @@ var STRINGS = {
   },
 };
 
-var LANG = (navigator.language || 'en').toLowerCase().indexOf('tr') === 0 ? 'tr' : 'en';
+// The language: English unless Türkçe was chosen, in the Settings of the
+// desktop app (window.ayva.language), the Android app (?lang=) or this page
+// (the View group of the phone's More sheet). Never guessed from the system.
+var LANGS = { en: 'English', tr: 'Türkçe' };
+var LANG_FIXED = /[?&]lang=(en|tr)\b/.exec(location.search);
+var LANG = (function () {
+  if (LANG_FIXED) return LANG_FIXED[1];
+  if (window.ayva && LANGS[window.ayva.language]) return window.ayva.language;
+  try {
+    var saved = localStorage.getItem('ayva-lang');
+    if (LANGS[saved]) return saved;
+  } catch (e) { /* private mode */ }
+  return 'en';
+})();
+
+// Saves the choice and draws the page again in it.
+function setLang(lang) {
+  if (!LANGS[lang] || lang === LANG) return;
+  try {
+    localStorage.setItem('ayva-lang', lang);
+  } catch (e) { /* this visit only */ }
+  if (window.ayva && window.ayva.setLanguage) window.ayva.setLanguage(lang);
+  location.reload();
+}
+
+// A language picker: a select listing each language in its own name.
+function langPicker(select) {
+  Object.keys(LANGS).forEach(function (k) {
+    var o = document.createElement('option');
+    o.value = k;
+    o.textContent = LANGS[k];
+    select.appendChild(o);
+  });
+  select.value = LANG;
+  select.onchange = function () { setLang(select.value); };
+}
 
 function t(key) {
   return STRINGS[LANG][key] || STRINGS.en[key] || key;
