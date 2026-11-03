@@ -9,6 +9,7 @@ Bilgisayarda Ayva'yı aç ve **Paylaşımı başlat**a bas. TV uygulaması bilgi
 - **Her yerden:** internet erişimini aç, telefonla QR kodu okut. Hesap ya da modem ayarı gerekmez.
 - **Uzaktan kontrol:** bilgisayarın faresini ve klavyesini telefondan (touchpad), TV kumandasından ya da başka bir bilgisayarın tarayıcısından kullan.
 - **Dosya ve pano:** bilgisayar ile telefon arasında dosya ve yazı gönder.
+- **Telefon bilgisayarda:** Android telefonun ekranını ve sesini ya da herhangi bir telefonun kamerasını bilgisayarda bir pencerede göster, telefonu fareyle kullan.
 - **Kimin bağlanacağına sen karar verirsin:** yeni cihazlar bilgisayarda onaylanmadan bağlanamaz. Hatırlanan cihazlar sormadan bağlanır, istediğin cihazın bağlantısını tek tıkla kesebilirsin.
 - **Doğrudan bağlantı:** görüntü WebRTC ile doğrudan bilgisayardan izleyen cihaza gider. 1440p 60 FPS'e kadar, sesli.
 - **Arka planda çalışır:** Ayva saat yanındaki simgeye küçülebilir ve Windows ile birlikte başlayabilir.
@@ -175,6 +176,43 @@ Ayva telefonun sesini bilgisayarda çalar. Windows'ta bir programın sesini baş
 3. Discord'da **Kullanıcı Ayarları → Ses ve Görüntü** bölümünde **Giriş Cihazı** olarak **CABLE Output**'u seç.
 
 Artık telefona söylediklerin Discord'a gider. Bilgisayarın sesi paylaşılıyorsa telefon Discord'daki diğer kişileri de duyar; kendi sesin ise hoparlöre değil kabloya gittiği için sana geri gelmez. Telefonu yeniden bilgisayarın hoparlöründen duymak için çıkışı **Varsayılan hoparlör**'e geri al.
+
+## Telefon bilgisayarda
+
+Bu sefer tersi: telefon ekranını ya da kamerasını bilgisayarda bir pencerede gösterir. Bunun için masaüstü uygulaması gerekir ve yalnızca hatırladığın cihazlar yapabilir. **Hatırlanan cihazlar** listesinde her cihazın yanında bunlar için kutular var, hepsi varsayılan olarak kapalı:
+
+- **Ekranını gösterebilir** (yalnızca Android uygulaması)
+- **Kamerasını gösterebilir** (Android uygulaması ya da https adresindeki bir tarayıcı)
+- **Buradan kontrol edilebilir** (**Ekranını gösterebilir** işaretlenince görünür)
+
+Bilgisayar her seferinde bildirim gösterir, **Bağlı cihazlar** listesinde cihazın yanında **ekranını gösteriyor** ya da **kamerasını gösteriyor** yazar, [bağlantı geçmişi](#güvenlik) de ne kadar sürdüğünü ve neden bittiğini not eder. Pencereyi kapatmak bitirir.
+
+### Telefonun ekranı ve sesi
+
+Android uygulamasında bilgisayara bağlan (bilgisayarın paylaşım yapıyor olması gerekmez) ve **Ekranımı göster**'e dokun. Android her seferinde izin ister ve ekran gösterildiği sürece **Durdur** butonlu bir bildirim tutar. Ekrandaki her şey, bildirimler de dahil, bilgisayarda görünür; özel bir şey açmadan önce durdur.
+
+- Görüntüyü telefonun donanımı kodlar ve 60 FPS'e kadar doğrudan bilgisayara gider. Tam ekran için pencereye çift tıkla (telefon kontrol edilmiyorken). Alttaki satır durumu gösterir (kare hızları, kesintiler, ses düzeyi).
+- **Ses** (Android 10 ve sonrası) görüntüyle birlikte, eş zamanlı gelir. Android bunun için mikrofon izni ister, çünkü uygulamaların çaldığı sesi almayı kayıt sayar. **Ses: PC + telefon** iki yerde de çalar; **Ses: yalnız PC** telefonun medya sesini kısar. Bunun bilgisayara giden sesi de kestiği telefonlarda Ayva kendiliğinden ikisine döner. Pencerenin kendi çıkış seçicisi (başka seçmezsen Windows'un varsayılan çıkışı) ve %200'e kadar ses ayarı var. Bazı uygulamalar seslerinin alınmasına izin vermez, telefon görüşmeleri hiç alınmaz.
+- Telefonda başka uygulamalara geçince de devam eder. Ekran kapanırsa görüntü bekler ve ekran açılınca devam eder; telefonu kilitlemek bitirebilir.
+- **Pil tasarrufu** Ayva'yı arka planda kapatabilir. Telefon Ayva'nın pil kullanımını kısıtlıyorsa **Pil kısıtlamasını kaldır** doğru ayar sayfasını açar (**Kısıtlamasız**'ı seç). Ekran gösterme kendiliğinden durduysa uygulama bir sonraki açılışta nedenini söyler.
+
+### Telefonun kamerası
+
+**Kameramı göster**'e dokun (ön kamera için **Kamerayı çevir**). Kamera kendi penceresinde, sessiz gösterilir. Uygulama ya da tarayıcı ekranda değilken Android kamerayı durdurur.
+
+### Telefonu bilgisayardan kontrol etme
+
+**Buradan kontrol edilebilir** işaretliyse telefonun penceresinde fare parmak gibi çalışır: tıklamak dokunur, sürüklemek kaydırır, sağ tık Geri'dir, tekerlek kaydırır. Pencerenin altında **Geri**, **Ana ekran** ve **Son uygulamalar** butonları var.
+
+Android, bir uygulamanın başka uygulamalara dokunmasına yalnızca erişilebilirlik hizmetiyle izin verir; Google Play Protect de Play Store dışından kurulan böyle uygulamaları engeller. Bu yüzden Ayva bunun yerine Android'in **Kablosuz hata ayıklama** özelliğini kullanır, [scrcpy](https://github.com/Genymobile/scrcpy) gibi. Kurulumu bir kez, birkaç dakika sürer:
+
+1. Telefonun penceresinde **Kontrolü ayarla**'ya, sonra **adb'yi Google'dan indir**'e bas. Google'ın `adb` aracı (yaklaşık 7 MB) Ayva'yla birlikte dağıtılamadığı için, sen isteyince Google'dan Ayva'nın kendi klasörüne indirilir.
+2. Telefonda **Geliştirici seçenekleri**'ni aç (Ayarlar → Telefon hakkında → **Derleme numarası**'na 7 kez dokun), sonra Geliştirici seçenekleri altında **Kablosuz hata ayıklama**'yı aç. Telefon bilgisayarla aynı Wi-Fi'da olmalı.
+3. **Kablosuz hata ayıklama → Cihazı eşleme koduyla eşle**'ye dokun, orada görünen IP adresini, bağlantı noktasını ve 6 haneli kodu pencereye yaz, **Eşleştir**'e bas.
+
+Bundan sonra telefon ekranını her gösterdiğinde kontrol kendiliğinden başlar. Telefon başka bir Wi-Fi'a geçerse Android Kablosuz hata ayıklamayı kapatabilir; yeniden aç (eşleşme kalır).
+
+Eşleşen bilgisayar telefonda geniş yetki kazanır, bu yüzden yalnızca kendi bilgisayarını eşleştir. Ayva telefonda yalnızca birkaç sabit komut çalıştırır ve bir sayfanın gönderdiği hiçbir şey telefonun kabuğuna ulaşmaz. Bazı banka uygulamaları Geliştirici seçenekleri açıkken çalışmaz.
 
 ## Arka planda çalışma
 

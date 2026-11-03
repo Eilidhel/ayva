@@ -9,6 +9,7 @@ Open Ayva on your computer and press **Start sharing**. The TV app finds the com
 - **From anywhere:** turn on internet access and scan the QR code on your phone. No account and no router setup.
 - **Remote control:** use the computer's mouse and keyboard from your phone (touchpad), the TV remote, or another computer's browser.
 - **Files and clipboard:** send files and text between the computer and your phone.
+- **The phone on the computer:** show an Android phone's screen and sound, or any phone's camera, in a window on the computer, and use the phone with the mouse.
 - **You decide who connects:** new devices must be approved on the computer. Remembered devices connect without asking, and anyone can be disconnected with one click.
 - **Peer-to-peer:** video goes straight from your computer to the viewer over WebRTC, at up to 1440p 60 FPS with sound.
 - **Runs in the background:** Ayva can live in the system tray and start with Windows.
@@ -178,6 +179,43 @@ Ayva plays the phone's voice on the computer, and Windows has no way for one pro
 
 Now what you say into the phone goes to Discord. If the computer's sound is being shared, the phone also hears the others in Discord, and your own voice no longer comes back to you, because it goes into the cable instead of the speakers. Set the output back to **Default speakers** to hear the phone on the computer again.
 
+## The phone on the computer
+
+The other way round: a phone shows its screen or camera in a window on the computer. This needs the desktop app, and only devices you remembered can do it. Under **Remembered devices**, each one has boxes for it, all off by default:
+
+- **Can show its screen** (Android app only)
+- **Can show its camera** (Android app, or a browser at an https address)
+- **Can be controlled from here** (appears once **Can show its screen** is ticked)
+
+The computer sends a notification every time, **Connected devices** shows **showing its screen** or **showing its camera** next to the device, and the [connection history](#security) notes how long it went and why it ended. Closing the window ends it.
+
+### The phone's screen and sound
+
+In the Android app, connect to the computer (it does not need to be sharing) and tap **Show my screen**. Android asks for permission each time and keeps a notification with a **Stop** button while the screen is shown. Everything on the screen can be seen on the computer, including notifications, so stop it before opening anything private.
+
+- The picture is encoded by the phone's hardware and goes peer-to-peer at up to 60 FPS. Double-click the window for full screen (while the phone is not being controlled). A line at the bottom shows how it is doing (frame rates, gaps, sound level).
+- **Sound** (Android 10 and newer) comes with the picture, in step. Android asks for the microphone permission for this, because it counts capturing what apps play as recording. **Sound: PC + phone** plays it on both; **Sound: PC only** turns the phone's media volume down. On phones where that also silences what reaches the computer, Ayva goes back to both by itself. The window has its own output picker (Windows' default output unless you choose another) and a volume slider up to 200 %. Some apps do not allow their sound to be captured, and phone calls never are.
+- It keeps going while you use other apps on the phone. If the screen turns off, the picture waits and goes on when it is on again; locking the phone may end it.
+- **Battery saving** may close Ayva in the background. If the phone limits Ayva's battery use, **Remove battery limit** opens the right settings page (choose **Unrestricted**). When showing the screen stopped by itself, the app says why the next time.
+
+### The phone's camera
+
+Tap **Show my camera** (and **Switch camera** for the front one). The camera is shown without sound in its own window. Android stops the camera while the app or browser is not on screen.
+
+### Controlling the phone from the computer
+
+With **Can be controlled from here** ticked, the mouse works like a finger in the phone's window: click to tap, drag to swipe, right-click for Back, and the wheel scrolls. **Back**, **Home** and **Recents** buttons sit at the bottom of the window.
+
+Android lets an app touch other apps only through an accessibility service, and Google Play Protect blocks such apps when they are not installed from the Play Store. So Ayva uses Android's **Wireless debugging** instead, the same way [scrcpy](https://github.com/Genymobile/scrcpy) does. Setting it up takes a few minutes, once:
+
+1. In the phone's window press **Set up control**, then **Download adb from Google**. Google's `adb` tool (about 7 MB) may not be shipped with Ayva, so it is downloaded from Google into Ayva's own folder when you ask.
+2. On the phone, turn on **Developer options** (Settings → About phone → tap **Build number** 7 times), then **Wireless debugging** under Developer options. The phone must be on the same Wi-Fi as the computer.
+3. Tap **Wireless debugging → Pair device with pairing code** and type the IP address, port and 6-digit code from there into the window, then press **Pair**.
+
+After that, control starts by itself whenever the phone shows its screen. If the phone changes Wi-Fi, Android may turn Wireless debugging off; turn it on again (the pairing is kept).
+
+A paired computer has wide access to the phone, so pair only your own computer. Ayva runs only a few fixed commands on the phone and nothing a page sends reaches its shell. Some banking apps refuse to run while Developer options are on.
+
 ## Running in the background
 
 Closing the window keeps Ayva running in the system tray, so TVs can still find the computer. Right-click the tray icon to **Quit**.
@@ -231,9 +269,9 @@ Phone elsewhere ── https ── Cloudflare quick tunnel ── server.js (ac
 
 - `server.js` serves the pages, relays WebRTC signaling within a room (the 6-digit code), asks the host to approve each viewer, checks access keys for tunnel connections, and answers LAN discovery.
 - `public/share.js` captures the screen and opens one `RTCPeerConnection` per viewer, with `control` and `transfer` data channels.
-- `public/watch.js`, `control.js` and `inbox.js` are the viewer: playback, remote control, and files/clipboard.
-- `desktop/` is the Electron app: source picker, input injection (`input.js`, Win32 `SendInput`), tunnel (`tunnel.js`), tray, files and clipboard.
-- `android/` is the Android app for TVs and phones (plain Java, no dependencies): discovery, fixed addresses, and a full-screen WebView player with the device key in the Android Keystore.
+- `public/watch.js`, `control.js` and `inbox.js` are the viewer: playback, remote control, and files/clipboard. `screen.js` and `camera.js` send the phone's screen and camera to the computer, which shows them in `mirror.html` windows.
+- `desktop/` is the Electron app: source picker, input injection (`input.js`, Win32 `SendInput`), tunnel (`tunnel.js`), tray, files and clipboard, and phone control over ADB (`adb.js`).
+- `android/` is the Android app for TVs and phones (plain Java, no dependencies): discovery, fixed addresses, and a full-screen WebView player with the device key in the Android Keystore. `ScreenService` captures and encodes the phone's screen (H.264) and sound (Opus); `InputServer` is started by the computer over ADB to pass on touches.
 
 ## Building
 
