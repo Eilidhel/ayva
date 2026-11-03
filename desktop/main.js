@@ -14,6 +14,7 @@ const input = require('./input');
 const { Tunnel } = require('./tunnel');
 const { Cloud } = require('./cloud');
 const { Turn } = require('./turn');
+const { Adb } = require('./adb');
 const { Receiver } = require('./files');
 const { Updater } = require('./updater');
 
@@ -201,6 +202,40 @@ ipcMain.handle('cloud-remove', async (event) => {
   if (!fromOurWindow(event)) return false;
   await cloud.remove();
   return true;
+});
+
+// ---- Controlling a phone over ADB (see adb.js) ----
+
+let adb = null;
+
+ipcMain.handle('adb-status', () => (adb ? adb.status() : { installed: false }));
+
+ipcMain.handle('adb-download', async (event) => {
+  if (!fromOurWindow(event)) return { error: 'denied' };
+  try {
+    await adb.download((fraction) => { if (win) win.webContents.send('adb-progress', fraction); });
+    return { ok: true };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle('adb-pair', (event, host, port, code) => {
+  if (!fromOurWindow(event)) return { ok: false, error: 'denied' };
+  return adb.pair(String(host), String(port), String(code));
+});
+
+ipcMain.handle('adb-start', (event, serial, host) => {
+  if (!fromOurWindow(event)) return { ok: false, error: 'denied' };
+  return adb.startInput(String(serial), String(host || ''));
+});
+
+ipcMain.on('adb-input', (event, serial, line) => {
+  if (fromOurWindow(event)) adb.input(String(serial), line);
+});
+
+ipcMain.on('adb-stop', (event, serial) => {
+  if (fromOurWindow(event)) adb.stopInput(String(serial));
 });
 
 // ---- Backup route (Cloudflare TURN in the user's account, see turn.js) ----
@@ -550,10 +585,42 @@ function createWindow(port) {
     callback(audio ? { video: source, audio } : { video: source });
   });
 
-  // Links to the outside world open in the normal browser.
+  // Links to the outside world open in the normal browser. The one window the
+  // page opens itself shows a phone's screen; the page draws into it.
   win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url === 'http://localhost:' + port + '/mirror.html') {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 420,
+          height: 820,
+          minWidth: 200,
+          minHeight: 200,
+          backgroundColor: '#000000',
+          title: 'Ayva',
+          icon: path.join(__dirname, 'icon.png'),
+          autoHideMenuBar: true,
+          // Partly covered by another window, Windows can report it hidden,
+          // which would stop its display refreshes and the picture with them.
+          webPreferences: { backgroundThrottling: false },
+        },
+      };
+    }
     shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  // A phone's screen or camera shows up even while Ayva itself is minimized
+  // or in the tray (a window opened from a minimized one starts minimized).
+  win.webContents.on('did-create-window', (child) => {
+    const bringUp = () => {
+      if (child.isDestroyed()) return;
+      if (child.isMinimized()) child.restore();
+      child.show();
+    };
+    bringUp();
+    child.once('ready-to-show', bringUp);
+    child.webContents.once('did-finish-load', bringUp);
   });
 
   win.loadURL('http://localhost:' + port + '/share?app=1');
@@ -595,6 +662,7 @@ app.whenReady().then(async () => {
   }
   cloud = new Cloud(app.getPath('userData'), path.join(__dirname, '..', 'public'), app.getVersion());
   turn = new Turn(app.getPath('userData'));
+  adb = new Adb(app.getPath('userData'));
   // Keep the pages at the fixed address in step with this version of Ayva.
   cloud.updateIfNeeded().catch(() => {});
   createWindow(server.port);
@@ -618,6 +686,7 @@ app.on('will-quit', () => {
   setPrivacy(false);
   releaseAll();
   stopInternet();
+  if (adb) adb.stopAll();
   globalShortcut.unregisterAll();
 });
 

@@ -1,7 +1,8 @@
-// Exposes the desktop app's features to the share page.
+// Exposes the desktop app's features to the share page. Windows it opens
+// (a phone's screen, mirror.html) inherit this preload but get nothing.
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('ayva', {
+if (/^\/share(\.html)?$/.test(location.pathname)) contextBridge.exposeInMainWorld('ayva', {
   getSources: () => ipcRenderer.invoke('get-sources'),
   selectSource: (sourceId, audio) => ipcRenderer.invoke('select-source', { sourceId, audio }),
   remoteStart: (audio, sourceId) => ipcRenderer.invoke('remote-start', audio, sourceId),
@@ -37,6 +38,14 @@ contextBridge.exposeInMainWorld('ayva', {
   cloudSetup: (apiToken, password) => ipcRenderer.invoke('cloud-setup', apiToken, password),
   cloudRemove: () => ipcRenderer.invoke('cloud-remove'),
   onCloudProgress: (fn) => ipcRenderer.on('cloud-progress', (_e, step) => fn(step)),
+
+  adbStatus: () => ipcRenderer.invoke('adb-status'),
+  adbDownload: () => ipcRenderer.invoke('adb-download'),
+  onAdbProgress: (fn) => ipcRenderer.on('adb-progress', (_e, fraction) => fn(fraction)),
+  adbPair: (host, port, code) => ipcRenderer.invoke('adb-pair', host, port, code),
+  adbStart: (serial, host) => ipcRenderer.invoke('adb-start', serial, host),
+  adbInput: (serial, line) => ipcRenderer.send('adb-input', serial, line),
+  adbStop: (serial) => ipcRenderer.send('adb-stop', serial),
 
   turnStatus: () => ipcRenderer.invoke('turn-status'),
   turnSetup: (keyId, apiToken) => ipcRenderer.invoke('turn-setup', keyId, apiToken),
