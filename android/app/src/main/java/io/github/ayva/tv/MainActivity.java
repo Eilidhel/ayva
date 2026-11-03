@@ -301,6 +301,19 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
 
     private boolean checkAsked;
 
+    // Ayva's page in the Play Store app, or on the web where there is none.
+    private void openPlayPage() {
+        String id = getPackageName();
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + id)));
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + id)));
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
     // The update strip, while there is something to show; null otherwise.
     private View addUpdateButton() {
         String label;
@@ -336,22 +349,30 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         list.addView(back);
 
         list.addView(section(R.string.settings_updates));
-        addUpdateButton();
-        int state;
-        int dot = MUTED;
-        switch (updater.state()) {
-            case CHECKING: state = R.string.settings_checking; break;
-            case UP_TO_DATE: state = R.string.settings_latest; dot = OK; break;
-            case FAILED: state = R.string.settings_failed; dot = LIVE; break;
-            default: state = R.string.settings_check;
+        if (!Updater.ENABLED) {
+            // The Google Play build: updates come from Play, so this opens Ayva's page there.
+            View version = card("⬆", getString(R.string.settings_version, updater.installedVersion()),
+                    getString(R.string.settings_from_play), MUTED, false, v -> openPlayPage());
+            version.setTag("version");
+            list.addView(version);
+        } else {
+            addUpdateButton();
+            int state;
+            int dot = MUTED;
+            switch (updater.state()) {
+                case CHECKING: state = R.string.settings_checking; break;
+                case UP_TO_DATE: state = R.string.settings_latest; dot = OK; break;
+                case FAILED: state = R.string.settings_failed; dot = LIVE; break;
+                default: state = R.string.settings_check;
+            }
+            View version = card("⬆", getString(R.string.settings_version, updater.installedVersion()),
+                    getString(state), dot, false, v -> {
+                        checkAsked = true;
+                        updater.check(true);
+                    });
+            version.setTag("version");
+            list.addView(version);
         }
-        View version = card("⬆", getString(R.string.settings_version, updater.installedVersion()),
-                getString(state), dot, false, v -> {
-                    checkAsked = true;
-                    updater.check(true);
-                });
-        version.setTag("version");
-        list.addView(version);
 
         list.addView(section(R.string.settings_theme));
         list.addView(themeRow());
@@ -524,6 +545,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         root.setBackgroundColor(BG);
         int side = isTv() ? dp(48) : dp(20);
         root.setPadding(side, dp(40), side, dp(24));
+        SystemBars.pad(root);
 
         int width = Math.min(dp(520), getResources().getDisplayMetrics().widthPixels - 2 * side);
         LinearLayout header = new LinearLayout(this);

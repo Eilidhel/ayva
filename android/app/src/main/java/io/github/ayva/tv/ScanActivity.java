@@ -72,6 +72,7 @@ public class ScanActivity extends Activity implements TextureView.SurfaceTexture
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
+        SystemBars.pad(root);
         view = new TextureView(this);
         view.setSurfaceTextureListener(this);
         root.addView(view);

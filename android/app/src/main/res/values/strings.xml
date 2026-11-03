@@ -49,6 +49,7 @@
     <string name="settings_checking">Checking…</string>
     <string name="settings_latest">Up to date</string>
     <string name="settings_failed">Could not check</string>
+    <string name="settings_from_play">Updates come from Google Play</string>
     <string name="settings_app">App</string>
     <string name="settings_app_info">Battery and permissions</string>
     <string name="settings_app_info_hint">Set battery use to Unrestricted for showing your screen</string>

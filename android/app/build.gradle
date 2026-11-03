@@ -8,15 +8,25 @@ def appVersionCode = appVersion.tokenize('.').collect { it as int }.inject(0) { 
 
 android {
     namespace 'io.github.ayva.tv'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId 'io.github.ayva.tv'
         minSdk 21
-        targetSdk 34
+        targetSdk 36
         versionCode appVersionCode
         // -PnameSuffix=-test.N marks test builds, so they can be told apart on the phone.
         versionName appVersion + (project.findProperty('nameSuffix') ?: '')
+    }
+
+    // Two builds of the same app. github: the APK on GitHub Releases, which
+    // updates itself from there (src/github). play: the bundle for Google
+    // Play, which allows updates only through Play, so it has no updater and
+    // no permission to install apps (src/play).
+    flavorDimensions 'store'
+    productFlavors {
+        github { dimension 'store' }
+        play { dimension 'store' }
     }
 
     signingConfigs {

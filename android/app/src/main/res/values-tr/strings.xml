@@ -49,6 +49,7 @@
     <string name="settings_checking">Denetleniyor…</string>
     <string name="settings_latest">Güncel</string>
     <string name="settings_failed">Denetlenemedi</string>
+    <string name="settings_from_play">Güncellemeler Google Play\'den gelir</string>
     <string name="settings_app">Uygulama</string>
     <string name="settings_app_info">Pil ve izinler</string>
     <string name="settings_app_info_hint">Ekranını gösterirken pil kullanımını Sınırsız yap</string>

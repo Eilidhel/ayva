@@ -10,8 +10,6 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Scanning the QR code shown on the computer; asked for on first use -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <!-- Installs its own updates from GitHub Releases, after Android asks -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- "Show my screen": Android allows screen capture only from a foreground
          service with a notification; the capture itself is asked for each time -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -26,7 +24,11 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
+    <!-- enableOnBackInvokedCallback="false": Back keeps reaching onBackPressed
+         and onKeyDown (Settings, the page's own history, the TV remote), which
+         Android 16 would otherwise stop delivering to apps that target it. -->
     <application
+        android:enableOnBackInvokedCallback="false"
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/banner"
@@ -67,9 +69,5 @@
             android:name=".ScreenService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
-
-        <receiver
-            android:name=".UpdateReceiver"
-            android:exported="false" />
     </application>
 </manifest>

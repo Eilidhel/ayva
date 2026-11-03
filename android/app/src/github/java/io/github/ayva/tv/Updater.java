@@ -32,8 +32,14 @@ import java.net.URL;
  * for a newer Ayva-Android.apk now and then, and on request downloads it and
  * hands it to Android's installer. Android shows its own install prompt, and
  * only accepts an APK signed with the same key as the installed app.
+ *
+ * Only in the GitHub build; the Google Play build has a stand-in (src/play),
+ * since Play allows updates only through Play.
  */
 class Updater {
+
+    /** Whether this build updates itself (Settings shows the check). */
+    static final boolean ENABLED = true;
 
     interface Listener {
         /** Called on the main thread whenever {@link #state()} changes. */
