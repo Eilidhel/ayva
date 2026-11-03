@@ -2,6 +2,8 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <!-- Scripts only from Ayva itself: a name or text a device sends can never run as code here -->
+  <meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'">
   <title>Ayva</title>
   <!-- A phone's screen. Opened and drawn into by the share page (share.js,
        "A phone's screen in a window here"); it has no script of its own. -->

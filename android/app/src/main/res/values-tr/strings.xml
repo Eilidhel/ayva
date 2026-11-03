@@ -61,4 +61,7 @@
     <string name="theme_plum">Erik</string>
     <string name="theme_rose">Gül</string>
     <string name="theme_light">Açık</string>
+    <string name="link_title">Bu adres açılsın mı?</string>
+    <string name="link_message">%1$s\n\nYalnızca kendi bilgisayarındaki Ayva\'da görünen adresse aç.</string>
+    <string name="link_open">Aç</string>
 </resources>

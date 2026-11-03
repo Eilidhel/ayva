@@ -111,6 +111,12 @@ function handleControl(msg) {
   }
 }
 
+// Only web addresses go to the normal browser: other kinds (file:, custom
+// app protocols) can start programs on Windows.
+function openOutside(url) {
+  if (/^https?:\/\//i.test(String(url))) shell.openExternal(url);
+}
+
 function fromOurWindow(event) {
   return win && event.sender === win.webContents;
 }
@@ -606,7 +612,7 @@ function createWindow(port) {
         },
       };
     }
-    shell.openExternal(url);
+    openOutside(url);
     return { action: 'deny' };
   });
 
@@ -616,7 +622,7 @@ function createWindow(port) {
   win.webContents.on('will-navigate', (e, url) => {
     if (url.startsWith('http://localhost:' + port + '/share')) return;
     e.preventDefault();
-    if (!url.startsWith('http://localhost:' + port + '/')) shell.openExternal(url);
+    if (!url.startsWith('http://localhost:' + port + '/')) openOutside(url);
   });
 
   // A phone's screen or camera shows up even while Ayva itself is minimized

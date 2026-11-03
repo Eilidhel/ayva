@@ -522,6 +522,39 @@ function renderStats() {
   }).join('');
 }
 
+// A viewer's stats come from that device and end up in this page's HTML, so
+// only the known fields are kept: numbers as numbers, the few names as short
+// plain words. Anything else a viewer sends is dropped.
+var STAT_FIELDS = {
+  video: ['width', 'height', 'fps', 'decodeMs', 'dropped', 'receivedFps', 'freezes', 'freezeMs', 'jitterMs'],
+  audio: ['lossPct', 'concealedPct', 'stretchPct', 'jitterMs'],
+  pacing: ['medianMs', 'maxMs', 'hitches', 'frames'],
+  playout: ['rate', 'latencyMs', 'gapPct'],
+};
+
+function cleanStats(raw) {
+  var number = function (v) { return typeof v === 'number' && isFinite(v) ? v : 0; };
+  var word = function (v) { return String(v || '').replace(/[^\w./ -]/g, '').slice(0, 40); };
+  var out = {};
+  Object.keys(STAT_FIELDS).forEach(function (part) {
+    var r = raw[part];
+    if (!r || typeof r !== 'object') return;
+    var o = {};
+    STAT_FIELDS[part].forEach(function (k) { o[k] = number(r[k]); });
+    out[part] = o;
+  });
+  // receivedFps and gapPct may be absent on purpose (not measured).
+  if (out.video && typeof raw.video.receivedFps !== 'number') out.video.receivedFps = null;
+  if (out.playout && typeof raw.playout.gapPct !== 'number') out.playout.gapPct = null;
+  if (out.video) {
+    out.video.codec = word(raw.video.codec);
+    out.video.decoder = word(raw.video.decoder);
+  }
+  if (out.playout) out.playout.path = raw.playout.path === 'webaudio' ? 'webaudio' : 'element';
+  out.rttMs = typeof raw.rttMs === 'number' && isFinite(raw.rttMs) ? raw.rttMs : null;
+  return out;
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
@@ -531,7 +564,7 @@ function escapeHtml(s) {
 function handleViewerSignal(id, data) {
   if (!data) return;
   if (data.kind === 'stats') {
-    if (data.stats && typeof data.stats === 'object') viewerStats[id] = data.stats;
+    if (data.stats && typeof data.stats === 'object') viewerStats[id] = cleanStats(data.stats);
     renderStats();
     return;
   }

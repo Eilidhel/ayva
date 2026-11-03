@@ -366,11 +366,31 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
     // ---- Fixed addresses (phones) ----
 
     // An address opened with this app (from the camera, a message…): keep it and go there.
+    // Anyone can make a workers.dev page, and a page opened here may ask for this
+    // phone's screen; so a link from another app or a website to an address not
+    // kept yet is shown first, and opens only on "Open". Scanned codes are the
+    // user's own doing and open at once.
     private void handleLink(Intent intent) {
+        handleLink(intent, false);
+    }
+
+    private void handleLink(Intent intent, boolean scanned) {
         Uri data = intent == null ? null : intent.getData();
         if (data == null || !"https".equals(data.getScheme()) || data.getHost() == null) return;
-        if (data.getHost().endsWith(".workers.dev")) saveAddress(data);
-        openUrl(data.toString());
+        Runnable go = () -> {
+            if (data.getHost().endsWith(".workers.dev")) saveAddress(data);
+            openUrl(data.toString());
+        };
+        if (scanned || addresses().contains("https://" + data.getHost() + "/")) {
+            go.run();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.link_title)
+                .setMessage(getString(R.string.link_message, data.getHost()))
+                .setPositiveButton(R.string.link_open, (d, w) -> go.run())
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     @Override
@@ -386,7 +406,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
             Toast.makeText(this, R.string.scan_not_ayva, Toast.LENGTH_LONG).show();
             return;
         }
-        handleLink(new Intent(Intent.ACTION_VIEW, u));
+        handleLink(new Intent(Intent.ACTION_VIEW, u), true);
     }
 
     private List<String> addresses() {
