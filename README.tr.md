@@ -160,6 +160,8 @@ Her imza, cihazın o an baktığı adresi de içerir ve bilgisayar sadece kendi 
 
 **Bağlantı geçmişi.** **Geçmiş** bölümü kimin ne zaman bağlandığını, ne kadar kaldığını, kime izin verip kimi reddettiğini, kimin paylaşımı başlattığını, kaydettiğini ya da mikrofonu açtığını gösterir. Yanlış PIN ve kanıtlanamayan mühür gibi şüpheli olaylar kırmızı görünür. Geçmiş yalnızca bu bilgisayarda tutulur (son 300 olay) ve **Geçmişi temizle** ile silinir.
 
+**Gizlilik.** Ayva'da hesap, reklam ya da takip yoktur; geliştiricisine hiçbir şey göndermez. Ayrıntılar [gizlilik politikasında](PRIVACY.md) (İngilizce).
+
 ## Telefonda kayıt
 
 Telefondaki ya da tarayıcıdaki **Kayıt** izlenen görüntüyü o cihazda kaydeder. Durdurunca video (destekleniyorsa MP4, değilse WebM) **Kaydet** butonuyla görünür. Ağdan fazladan bir şey gitmez. Bilgisayar o cihazı **kaydediyor** olarak gösterir ve bildirim verir, yani kayıt gizlice yapılamaz.

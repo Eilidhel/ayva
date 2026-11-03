@@ -162,6 +162,8 @@ Each signature also names the address the device is looking at, and the computer
 
 **Connection history.** The **History** section shows who connected and when, how long they stayed, whom you let in or turned away, and who started sharing, recorded or turned the microphone on. Suspicious events, such as a wrong PIN or a device that could not prove its key, show in red. The history stays on this computer (the last 300 events), and **Clear history** deletes it.
 
+**Privacy.** Ayva has no accounts, ads or tracking, and sends nothing to its developer; see the [privacy policy](PRIVACY.md).
+
 ## Recording on the phone
 
 **Record** on the phone or browser records what it is watching, on that device. When you stop, the video (MP4 where supported, otherwise WebM) appears with a **Save** button. Nothing extra goes over the network. The computer shows that device as **recording** and sends a notification, so recordings are never secret.
@@ -294,7 +296,8 @@ Android (JDK 17 and the Android SDK are required):
 
 ```bash
 cd android
-./gradlew assembleRelease   # app/build/outputs/apk/release/app-release.apk
+./gradlew assembleGithubRelease   # app/build/outputs/apk/github/release/app-github-release.apk
+./gradlew bundlePlayRelease      # the Google Play bundle (no self-updater), see docs/google-play.md
 ```
 
 Pushing a tag like `v0.5.0` makes GitHub Actions build both and attach them to a release (`.github/workflows/build.yml`).
