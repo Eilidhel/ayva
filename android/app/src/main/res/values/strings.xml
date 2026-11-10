@@ -62,6 +62,14 @@
     <string name="theme_plum">Plum</string>
     <string name="theme_rose">Rose</string>
     <string name="theme_light">Light</string>
+    <string name="theme_midnight">Midnight</string>
+    <string name="theme_violet">Violet</string>
+    <string name="theme_lime">Lime</string>
+    <string name="theme_ember">Ember</string>
+    <string name="theme_lilac">Lilac</string>
+    <string name="theme_fog">Fog</string>
+    <string name="theme_chalk">Chalk</string>
+    <string name="theme_ivory">Ivory</string>
     <string name="link_title">Open this address?</string>
     <string name="link_message">%1$s\n\nOpen it only if it is the address shown in Ayva on your own computer.</string>
     <string name="link_open">Open</string>

@@ -42,7 +42,55 @@
   --accent: #e0a92a; --accent-2: #c8901a; --on-accent: #2a1d05;
   --leaf: #3f8f31; --ok: #3f8f31; --live: #d23b40;
 }
-[data-theme="light"] .error, [data-theme="light"] .bad { color: #c0392b; }
+
+/* 60-30-10 themes: a base colour, a quieter second one for cards and text,
+   and a bright accent kept to small touches. Each dark one has a light twin. */
+[data-theme="midnight"] {
+  --bg: #1b1035; --panel: #231646; --panel-2: #2c1d55; --panel-3: #3a2b66;
+  --text: #e4e7ee; --muted: #9a93b8;
+  --accent: #19f5d6; --accent-2: #10d9bd; --on-accent: #062b27;
+}
+[data-theme="violet"] {
+  --bg: #141418; --panel: #1c1c22; --panel-2: #25252d; --panel-3: #2e2e38;
+  --text: #d9dadf; --muted: #8b8c96;
+  --accent: #8b5cff; --accent-2: #7647f5; --on-accent: #ffffff;
+}
+[data-theme="lime"] {
+  --bg: #1a1d21; --panel: #212429; --panel-2: #2a2e34; --panel-3: #343940;
+  --text: #e6e8ea; --muted: #8e949b;
+  --accent: #c6ff00; --accent-2: #b0e600; --on-accent: #1a1d21;
+}
+[data-theme="ember"] {
+  --bg: #18181a; --panel: #202023; --panel-2: #29292d; --panel-3: #333337;
+  --text: #ececee; --muted: #929297;
+  --accent: #ff5a1f; --accent-2: #e8490f; --on-accent: #1a0a03;
+}
+[data-theme="lilac"] {
+  --bg: #f3f1f8; --panel: #ffffff; --panel-2: #e7e3f1; --panel-3: #d9d3ea;
+  --text: #1b1035; --muted: #5f5880;
+  --accent: #19d9be; --accent-2: #12bfa7; --on-accent: #062b27;
+}
+[data-theme="fog"] {
+  --bg: #ececef; --panel: #ffffff; --panel-2: #dfdfe4; --panel-3: #cfd0d6;
+  --text: #141418; --muted: #5c5d66;
+  --accent: #6a3df0; --accent-2: #5a2fe0; --on-accent: #ffffff;
+}
+[data-theme="chalk"] {
+  --bg: #f1f2ee; --panel: #ffffff; --panel-2: #e3e5df; --panel-3: #d3d6cd;
+  --text: #1a1d21; --muted: #5d636a;
+  --accent: #b8f000; --accent-2: #a2d600; --on-accent: #1a1d21;
+}
+[data-theme="ivory"] {
+  --bg: #f6f1e7; --panel: #ffffff; --panel-2: #ebe4d6; --panel-3: #ddd4c2;
+  --text: #1e1a16; --muted: #6b6357;
+  --accent: #e8551a; --accent-2: #cc4610; --on-accent: #ffffff;
+}
+[data-theme="lilac"], [data-theme="fog"], [data-theme="chalk"], [data-theme="ivory"] {
+  --leaf: #3f8f31; --ok: #3f8f31; --live: #d23b40;
+}
+:is([data-theme="light"], [data-theme="lilac"], [data-theme="fog"], [data-theme="chalk"], [data-theme="ivory"]) :is(.error, .bad) { color: #c0392b; }
+/* Lime is too pale to read as link text on a light page. */
+[data-theme="chalk"] .steps a { color: var(--text); }
 
 * { box-sizing: border-box; }
 
@@ -756,7 +804,7 @@ select option { background: var(--panel-2); color: var(--text); }
 .group-items button.danger { color: var(--live); }
 .group-items select { background: var(--panel-2); margin: 4px 0; }
 .themes-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 10px 4px; }
-.themes { display: flex; gap: 10px; }
+.themes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
 .swatch {
   width: 30px;
   height: 30px;
