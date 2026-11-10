@@ -1,96 +1,49 @@
-/* Colours of the quince: golden skin, green leaf, brown stem, on warm dark. */
+/* Colour themes, 60-30-10: --bg is the 60 (the page), the panels and the
+   tab bar are the 30, the accent is the 10. Text on the panels is --text;
+   text straight on the page is --ink, which differs where the page is light
+   and the panels dark. Default: Midnight. Others picked in Settings (theme.js). */
 :root {
-  --bg: #16130e;
-  --panel: #201c15;
-  --panel-2: #2c271d;
-  --panel-3: #3a3326;
-  --text: #f4efe4;
-  --muted: #a89f8c;
-  --accent: #f2c14e;
-  --accent-2: #e0a92a;
-  --on-accent: #2a1d05;
+  --bg: #1b1035;
+  --bar: #140a28;
+  --panel: #231646;
+  --panel-2: #2c1d55;
+  --panel-3: #3a2b66;
+  --text: #e4e7ee;
+  --muted: #9a93b8;
+  --ink: var(--text);
+  --ink-muted: var(--muted);
+  --panel-text: var(--text);
+  --panel-muted: var(--muted);
+  --accent: #19f5d6;
+  --accent-2: #10d9bd;
+  --on-accent: #062b27;
   --leaf: #7cc46e;
   --live: #e5484d;
   --ok: #7cc46e;
   --radius: 14px;
 }
-
-/* Other colour themes, picked on the watch page (theme.js). */
-[data-theme="sea"] {
-  --bg: #0f1419; --panel: #161d24; --panel-2: #1f2932; --panel-3: #2a3743;
-  --text: #eaf1f7; --muted: #93a3b1;
-  --accent: #5cb3f0; --accent-2: #3d9ae0; --on-accent: #04223a;
-}
-[data-theme="leaf"] {
-  --bg: #10150f; --panel: #171e16; --panel-2: #212a1f; --panel-3: #2c382a;
-  --text: #ecf3e8; --muted: #9cab95;
-  --accent: #8fd17c; --accent-2: #72bd5e; --on-accent: #0f2a07;
-}
-[data-theme="plum"] {
-  --bg: #15111a; --panel: #1d1724; --panel-2: #282031; --panel-3: #352b40;
-  --text: #f1ecf6; --muted: #a99db6;
-  --accent: #c49af2; --accent-2: #ad7ee8; --on-accent: #2a0f45;
-}
-[data-theme="rose"] {
-  --bg: #1a1112; --panel: #23181a; --panel-2: #2f2123; --panel-3: #3d2b2e;
-  --text: #f7ecec; --muted: #b59c9e;
-  --accent: #f29a8a; --accent-2: #e77d6a; --on-accent: #3d0d06;
-}
-[data-theme="light"] {
-  --bg: #f7f3ea; --panel: #ffffff; --panel-2: #ece5d6; --panel-3: #e0d6c2;
-  --text: #2a2215; --muted: #6f6552;
-  --accent: #e0a92a; --accent-2: #c8901a; --on-accent: #2a1d05;
-  --leaf: #3f8f31; --ok: #3f8f31; --live: #d23b40;
-}
-
-/* 60-30-10 themes: a base colour, a quieter second one for cards and text,
-   and a bright accent kept to small touches. Each dark one has a light twin. */
-[data-theme="midnight"] {
-  --bg: #1b1035; --panel: #231646; --panel-2: #2c1d55; --panel-3: #3a2b66;
-  --text: #e4e7ee; --muted: #9a93b8;
-  --accent: #19f5d6; --accent-2: #10d9bd; --on-accent: #062b27;
-}
-[data-theme="violet"] {
-  --bg: #141418; --panel: #1c1c22; --panel-2: #25252d; --panel-3: #2e2e38;
-  --text: #d9dadf; --muted: #8b8c96;
-  --accent: #8b5cff; --accent-2: #7647f5; --on-accent: #ffffff;
-}
-[data-theme="lime"] {
-  --bg: #1a1d21; --panel: #212429; --panel-2: #2a2e34; --panel-3: #343940;
-  --text: #e6e8ea; --muted: #8e949b;
-  --accent: #c6ff00; --accent-2: #b0e600; --on-accent: #1a1d21;
-}
-[data-theme="ember"] {
-  --bg: #18181a; --panel: #202023; --panel-2: #29292d; --panel-3: #333337;
-  --text: #ececee; --muted: #929297;
-  --accent: #ff5a1f; --accent-2: #e8490f; --on-accent: #1a0a03;
-}
-[data-theme="lilac"] {
-  --bg: #f3f1f8; --panel: #ffffff; --panel-2: #e7e3f1; --panel-3: #d9d3ea;
-  --text: #1b1035; --muted: #5f5880;
-  --accent: #19d9be; --accent-2: #12bfa7; --on-accent: #062b27;
-}
-[data-theme="fog"] {
-  --bg: #ececef; --panel: #ffffff; --panel-2: #dfdfe4; --panel-3: #cfd0d6;
-  --text: #141418; --muted: #5c5d66;
-  --accent: #6a3df0; --accent-2: #5a2fe0; --on-accent: #ffffff;
-}
+/* Chalk white, graphite black, electric blue. */
 [data-theme="chalk"] {
-  --bg: #f1f2ee; --panel: #ffffff; --panel-2: #e3e5df; --panel-3: #d3d6cd;
-  --text: #1a1d21; --muted: #5d636a;
-  --accent: #b8f000; --accent-2: #a2d600; --on-accent: #1a1d21;
+  --bg: #eeede8; --bar: #232427; --panel: #232427; --panel-2: #2e2f33; --panel-3: #3a3b40;
+  --text: #eeede8; --muted: #a3a4a8; --ink: #232427; --ink-muted: #5f6064;
+  --accent: #2b5bff; --accent-2: #1f49e0; --on-accent: #ffffff;
 }
-[data-theme="ivory"] {
-  --bg: #f6f1e7; --panel: #ffffff; --panel-2: #ebe4d6; --panel-3: #ddd4c2;
-  --text: #1e1a16; --muted: #6b6357;
-  --accent: #e8551a; --accent-2: #cc4610; --on-accent: #ffffff;
+/* Butter yellow, espresso brown, cobalt blue. */
+[data-theme="butter"] {
+  --bg: #f3dc88; --bar: #382a22; --panel: #382a22; --panel-2: #45352c; --panel-3: #554238;
+  --text: #f3dc88; --muted: #c2ad82; --ink: #382a22; --ink-muted: #6b5538;
+  --accent: #1f4fd8; --accent-2: #1a42b8; --on-accent: #ffffff;
 }
-[data-theme="lilac"], [data-theme="fog"], [data-theme="chalk"], [data-theme="ivory"] {
-  --leaf: #3f8f31; --ok: #3f8f31; --live: #d23b40;
+/* Sage green, warm ivory, burnt orange. */
+[data-theme="sage"] {
+  --bg: #9eaf8e; --bar: #f1ead9; --panel: #f1ead9; --panel-2: #e6dcc6; --panel-3: #d6cab0;
+  --text: #23291f; --muted: #5e5b4f; --ink: #1f261b; --ink-muted: #36402f;
+  --accent: #ce5b22; --accent-2: #b54c1a; --on-accent: #ffffff;
+  --leaf: #3f7a31; --ok: #3f7a31; --live: #c8323a;
 }
-:is([data-theme="light"], [data-theme="lilac"], [data-theme="fog"], [data-theme="chalk"], [data-theme="ivory"]) :is(.error, .bad) { color: #c0392b; }
-/* Lime is too pale to read as link text on a light page. */
-[data-theme="chalk"] .steps a { color: var(--text); }
+[data-theme="sage"] :is(.error, .bad) { color: #b0261c; }
+/* Blue on the dark panels is too dim to read as link text. */
+:is([data-theme="chalk"], [data-theme="butter"]) .steps a { color: var(--text); }
 
 * { box-sizing: border-box; }
 
@@ -98,7 +51,7 @@ html, body {
   margin: 0;
   height: 100%;
   background: var(--bg);
-  color: var(--text);
+  color: var(--ink);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -143,6 +96,7 @@ h1 {
 
 .panel {
   background: var(--panel);
+  color: var(--text);
   border-radius: var(--radius);
   padding: 24px;
   margin-top: 16px;
@@ -307,7 +261,8 @@ select option { background: var(--panel-2); color: var(--text); }
 
 /* Share, before sharing: one centred card with a large cast mark over the button. */
 [data-section="share"] > .panel:first-child { position: relative; }
-.share-body:not(.live) [data-section="share"] > .panel:first-child { text-align: center; padding: 140px 24px 28px; }
+/* It sits straight on the page (the 60), in the page's text colours. */
+.share-body:not(.live) [data-section="share"] > .panel:first-child { text-align: center; padding: 140px 24px 28px; background: transparent; --text: var(--ink); --muted: var(--ink-muted); }
 .share-body:not(.live) [data-section="share"] > .panel:first-child > .row { justify-content: center; }
 .share-body:not(.live) [data-section="share"] > .panel:first-child::before {
   content: '';
@@ -668,6 +623,11 @@ select option { background: var(--panel-2); color: var(--text); }
   background: var(--bg);
 }
 .overlay.hidden { display: none; }
+/* Screens straight on the page use the page's text colours; the fields,
+   keys and lists on them are panels again. */
+.overlay { --text: var(--ink); --muted: var(--ink-muted); color: var(--text); }
+:is(.keypad, #codeInput, #pinInput, #pwInput, .host-list, .menu-list, .modal-box, .wait-tiles, .code-chip) { --text: var(--panel-text); --muted: var(--panel-muted); }
+.modal-box { color: var(--text); }
 
 #codeInput {
   width: 9ch;
@@ -909,7 +869,8 @@ select option { background: var(--panel-2); color: var(--text); }
   gap: 4px;
   padding: 0 16px;
   min-height: 52px;
-  background: color-mix(in srgb, var(--bg) 70%, #000);
+  background: var(--bar);
+  color: var(--text);
   border-bottom: 1px solid var(--panel-2);
   overflow-x: auto;
 }

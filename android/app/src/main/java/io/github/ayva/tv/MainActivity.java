@@ -27,7 +27,6 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -50,26 +49,16 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
 
     // The colour themes of the web pages (public/style.css), picked in Settings:
     // name, then background, card, panel, panel 3, text, muted, faint, accent,
-    // accent pressed, text on the accent, a computer that shares.
-    static final String[] THEMES = {"quince", "sea", "leaf", "plum", "rose", "midnight", "violet", "lime", "ember",
-            "light", "lilac", "fog", "chalk", "ivory"};
+    // accent pressed, text on the accent, a computer that shares, then text and
+    // muted text straight on the background (dark where the page is light).
+    static final String[] THEMES = {"midnight", "chalk", "butter", "sage"};
     private static final int[][] PALETTES = {
-        {0xFF16130E, 0xFF201C15, 0xFF2C271D, 0xFF3A3326, 0xFFF4EFE4, 0xFFA89F8C, 0xFF6F6552, 0xFFF2C14E, 0xFFE0A92A, 0xFF2A1D05, 0xFF2A1A17},
-        {0xFF0F1419, 0xFF161D24, 0xFF1F2932, 0xFF2A3743, 0xFFEAF1F7, 0xFF93A3B1, 0xFF5D6B78, 0xFF5CB3F0, 0xFF3D9AE0, 0xFF04223A, 0xFF2A171A},
-        {0xFF10150F, 0xFF171E16, 0xFF212A1F, 0xFF2C382A, 0xFFECF3E8, 0xFF9CAB95, 0xFF66735F, 0xFF8FD17C, 0xFF72BD5E, 0xFF0F2A07, 0xFF2A1717},
-        {0xFF15111A, 0xFF1D1724, 0xFF282031, 0xFF352B40, 0xFFF1ECF6, 0xFFA99DB6, 0xFF6E6379, 0xFFC49AF2, 0xFFAD7EE8, 0xFF2A0F45, 0xFF2A1720},
-        {0xFF1A1112, 0xFF23181A, 0xFF2F2123, 0xFF3D2B2E, 0xFFF7ECEC, 0xFFB59C9E, 0xFF7A6365, 0xFFF29A8A, 0xFFE77D6A, 0xFF3D0D06, 0xFF301616},
-        {0xFF1B1035, 0xFF231646, 0xFF2C1D55, 0xFF3A2B66, 0xFFE4E7EE, 0xFF9A93B8, 0xFF655D85, 0xFF19F5D6, 0xFF10D9BD, 0xFF062B27, 0xFF2E1530},
-        {0xFF141418, 0xFF1C1C22, 0xFF25252D, 0xFF2E2E38, 0xFFD9DADF, 0xFF8B8C96, 0xFF5E5F69, 0xFF8B5CFF, 0xFF7647F5, 0xFFFFFFFF, 0xFF2A1618},
-        {0xFF1A1D21, 0xFF212429, 0xFF2A2E34, 0xFF343940, 0xFFE6E8EA, 0xFF8E949B, 0xFF60666D, 0xFFC6FF00, 0xFFB0E600, 0xFF1A1D21, 0xFF2C191B},
-        {0xFF18181A, 0xFF202023, 0xFF29292D, 0xFF333337, 0xFFECECEE, 0xFF929297, 0xFF636368, 0xFFFF5A1F, 0xFFE8490F, 0xFF1A0A03, 0xFF2C1616},
-        {0xFFF7F3EA, 0xFFFFFFFF, 0xFFECE5D6, 0xFFE0D6C2, 0xFF2A2215, 0xFF6F6552, 0xFF9A8F7A, 0xFFE0A92A, 0xFFC8901A, 0xFF2A1D05, 0xFFFDE8E6},
-        {0xFFF3F1F8, 0xFFFFFFFF, 0xFFE7E3F1, 0xFFD9D3EA, 0xFF1B1035, 0xFF5F5880, 0xFF8F89AB, 0xFF19D9BE, 0xFF12BFA7, 0xFF062B27, 0xFFFDE8E6},
-        {0xFFECECEF, 0xFFFFFFFF, 0xFFDFDFE4, 0xFFCFD0D6, 0xFF141418, 0xFF5C5D66, 0xFF8D8E97, 0xFF6A3DF0, 0xFF5A2FE0, 0xFFFFFFFF, 0xFFFDE8E6},
-        {0xFFF1F2EE, 0xFFFFFFFF, 0xFFE3E5DF, 0xFFD3D6CD, 0xFF1A1D21, 0xFF5D636A, 0xFF8E949A, 0xFFB8F000, 0xFFA2D600, 0xFF1A1D21, 0xFFFDE8E6},
-        {0xFFF6F1E7, 0xFFFFFFFF, 0xFFEBE4D6, 0xFFDDD4C2, 0xFF1E1A16, 0xFF6B6357, 0xFF9B9384, 0xFFE8551A, 0xFFCC4610, 0xFFFFFFFF, 0xFFFDE8E6},
+        {0xFF1B1035, 0xFF231646, 0xFF2C1D55, 0xFF3A2B66, 0xFFE4E7EE, 0xFF9A93B8, 0xFF655D85, 0xFF19F5D6, 0xFF10D9BD, 0xFF062B27, 0xFF2E1530, 0xFFE4E7EE, 0xFF9A93B8},
+        {0xFFEEEDE8, 0xFF232427, 0xFF2E2F33, 0xFF3A3B40, 0xFFEEEDE8, 0xFFA3A4A8, 0xFF6E6F74, 0xFF2B5BFF, 0xFF1F49E0, 0xFFFFFFFF, 0xFF3A1F22, 0xFF232427, 0xFF5F6064},
+        {0xFFF3DC88, 0xFF382A22, 0xFF45352C, 0xFF554238, 0xFFF3DC88, 0xFFC2AD82, 0xFF8A7656, 0xFF1F4FD8, 0xFF1A42B8, 0xFFFFFFFF, 0xFF4A2420, 0xFF382A22, 0xFF6B5538},
+        {0xFF9EAF8E, 0xFFF1EAD9, 0xFFE6DCC6, 0xFFD6CAB0, 0xFF23291F, 0xFF5E5B4F, 0xFF8C887A, 0xFFCE5B22, 0xFFB54C1A, 0xFFFFFFFF, 0xFFF6DCD3, 0xFF1F261B, 0xFF36402F},
     };
-    private static int BG, CARD, PANEL, PANEL_3, TEXT, MUTED, FAINT, ACCENT, ACCENT_2, ON_ACCENT, LIVE_BG;
+    private static int BG, CARD, PANEL, PANEL_3, TEXT, MUTED, FAINT, ACCENT, ACCENT_2, ON_ACCENT, LIVE_BG, INK, INK_MUTED;
     private static final int LIVE = 0xFFE5484D;
     private static final int OK = 0xFF7CC46E;
     private static final long AUTO_CONNECT_WINDOW_MS = 4000;
@@ -124,6 +113,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         for (int i = 0; i < THEMES.length; i++) if (THEMES[i].equals(name)) p = PALETTES[i];
         BG = p[0]; CARD = p[1]; PANEL = p[2]; PANEL_3 = p[3]; TEXT = p[4]; MUTED = p[5];
         FAINT = p[6]; ACCENT = p[7]; ACCENT_2 = p[8]; ON_ACCENT = p[9]; LIVE_BG = p[10];
+        INK = p[11]; INK_MUTED = p[12];
     }
 
     // Saved, then the screen is drawn again in the new colours.
@@ -139,10 +129,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(4), dp(4), dp(4), dp(8));
         String now = theme();
-        int[] names = {R.string.theme_quince, R.string.theme_sea, R.string.theme_leaf,
-                R.string.theme_plum, R.string.theme_rose, R.string.theme_midnight, R.string.theme_violet,
-                R.string.theme_lime, R.string.theme_ember, R.string.theme_light, R.string.theme_lilac,
-                R.string.theme_fog, R.string.theme_chalk, R.string.theme_ivory};
+        int[] names = {R.string.theme_midnight, R.string.theme_chalk, R.string.theme_butter, R.string.theme_sage};
         for (int i = 0; i < THEMES.length; i++) {
             final String name = THEMES[i];
             View dot = new View(this);
@@ -167,17 +154,13 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
             lp.rightMargin = dp(12);
             row.addView(dot, lp);
         }
-        // Fourteen dots are wider than a phone: the row scrolls sideways.
-        HorizontalScrollView scroll = new HorizontalScrollView(this);
-        scroll.setHorizontalScrollBarEnabled(false);
-        scroll.addView(row);
-        return scroll;
+        return row;
     }
 
-    // A light theme's dot is its page colour with a wedge of its accent; a dark one's is its accent.
+    // A theme's dot: its page colour, then its panels, then its accent.
     private static int[] dotColors(int i) {
         int[] p = PALETTES[i];
-        return Color.red(p[0]) > 0x80 ? new int[]{p[0], p[0], p[7], p[7]} : new int[]{p[7], p[7]};
+        return new int[]{p[0], p[0], p[1], p[7]};
     }
 
     @Override
@@ -575,7 +558,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.mipmap.ic_launcher);
         header.addView(logo, new LinearLayout.LayoutParams(dp(44), dp(44)));
-        TextView name = text(getString(R.string.app_name), 28, TEXT);
+        TextView name = text(getString(R.string.app_name), 28, INK);
         name.setTypeface(Typeface.DEFAULT_BOLD);
         name.setPadding(dp(12), 0, 0, 0);
         header.addView(name, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
@@ -590,13 +573,13 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
         header.addView(gear, new LinearLayout.LayoutParams(dp(46), dp(46)));
         root.addView(header, new LinearLayout.LayoutParams(width, LinearLayout.LayoutParams.WRAP_CONTENT));
 
-        title = text(getString(R.string.searching), 17, TEXT);
+        title = text(getString(R.string.searching), 17, INK);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setGravity(Gravity.CENTER);
         title.setPadding(0, dp(22), 0, dp(4));
         root.addView(title);
 
-        help = text(getString(isTv() ? R.string.help : R.string.help_phone), 14, MUTED);
+        help = text(getString(isTv() ? R.string.help : R.string.help_phone), 14, INK_MUTED);
         help.setGravity(Gravity.CENTER);
         help.setPadding(0, 0, 0, dp(14));
         root.addView(help);
@@ -612,7 +595,7 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
 
     // A small heading over a group ("Computers", "Connect").
     private TextView section(int res) {
-        TextView tv = text(getString(res), 13, MUTED);
+        TextView tv = text(getString(res), 13, INK_MUTED);
         tv.setPadding(dp(4), dp(14), 0, dp(8));
         return tv;
     }
