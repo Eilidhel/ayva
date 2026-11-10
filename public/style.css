@@ -296,6 +296,47 @@ select option { background: var(--panel-2); color: var(--text); }
 }
 .device .tag.net { color: var(--leaf); }
 .device .tag.alert { color: var(--live); }
+/* Devices as a grid of cards; a card with its rights open takes the full row. */
+.devices { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.devices > .device { margin-top: 0; flex-direction: column; align-items: stretch; padding: 14px; border-radius: 12px; border: 1px solid var(--panel-3); }
+.devices > .device .device-name { font-weight: 600; }
+.devices > .device .tag { margin: 6px 6px 0 0; display: inline-block; }
+.devices > .device > .row { gap: 8px; margin-top: auto; }
+.devices > .device-card:has(.card-body:not([hidden])) { grid-column: 1 / -1; }
+.devices > :not(.device) { grid-column: 1 / -1; }
+
+/* Share, before sharing: one centred card with a large cast mark over the button. */
+[data-section="share"] > .panel:first-child { position: relative; }
+.share-body:not(.live) [data-section="share"] > .panel:first-child { text-align: center; padding: 140px 24px 28px; }
+.share-body:not(.live) [data-section="share"] > .panel:first-child > .row { justify-content: center; }
+.share-body:not(.live) [data-section="share"] > .panel:first-child::before {
+  content: '';
+  position: absolute;
+  top: 28px;
+  left: calc(50% - 46px);
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 2px solid var(--accent);
+}
+.share-body:not(.live) [data-section="share"] > .panel:first-child::after {
+  content: '';
+  position: absolute;
+  top: 54px;
+  left: calc(50% - 20px);
+  width: 40px;
+  height: 40px;
+  background: var(--accent);
+  -webkit-mask: var(--cast) center / contain no-repeat;
+  mask: var(--cast) center / contain no-repeat;
+  --cast: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M3 19h.01M7 19a4 4 0 0 0-4-4M11 19a8 8 0 0 0-8-8M15 19h3a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3H6a3 3 0 0 0-3 2.8'/></svg>");
+}
+/* While sharing: the picture first, the buttons as pills centred under it. */
+.share-body.live [data-section="share"] > .panel:first-child { display: flex; flex-direction: column; text-align: center; }
+.share-body.live #preview { order: -1; margin: 0 0 16px; border: 6px solid var(--panel-2); background: var(--bg); }
+.share-body.live [data-section="share"] > .panel:first-child > .row { justify-content: center; }
+.share-body.live [data-section="share"] > .panel:first-child > .row button, .share-body.live .menu > summary { border-radius: 999px; }
 .approval-box { width: min(440px, 100%); }
 
 #historyBox summary, #turn summary { cursor: pointer; }
@@ -859,66 +900,50 @@ select option { background: var(--panel-2); color: var(--text); }
 /* ---- The computer's window: sections on the left (sharenav.js) ---- */
 
 .share-body { overflow: hidden; }
-.shell { display: flex; height: 100vh; }
-/* A narrow rail: an icon over a short name for each section; folded, icons only. */
+.shell { display: flex; flex-direction: column; height: 100vh; }
+/* Tabs across the top: a line under the open one in the accent, the rest quiet. */
 .side {
   flex: none;
-  width: 92px;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  padding: 14px 8px 10px;
-  background: var(--panel);
-  border-right: 1px solid var(--panel-2);
-  transition: width 0.18s;
+  align-items: center;
+  gap: 4px;
+  padding: 0 16px;
+  min-height: 52px;
+  background: color-mix(in srgb, var(--bg) 70%, #000);
+  border-bottom: 1px solid var(--panel-2);
+  overflow-x: auto;
 }
-.side .logo { justify-content: center; padding: 2px 0 6px; }
+.side .logo { display: flex; align-items: center; gap: 8px; padding-right: 14px; font-weight: 700; }
 .nav-btn {
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 4px 10px;
-  border-radius: 12px;
+  flex: none;
+  padding: 16px 10px 13px;
+  border-radius: 0;
+  border-bottom: 2px solid transparent !important;
   background: transparent;
   color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 600;
-  text-align: center;
-  overflow: hidden;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
-.nav-btn::before, .rail-toggle::before {
+.nav-btn:hover { background: transparent; color: var(--text); }
+.nav-btn.on { background: transparent; color: var(--text); border-bottom-color: var(--accent) !important; }
+/* Settings: a gear at the far right. */
+.nav-last { font-size: 0; padding: 10px; border-radius: 10px; border-bottom: 0 !important; }
+.nav-last::before {
   content: '';
-  flex: none;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   background: currentColor;
   -webkit-mask: var(--icon) center / contain no-repeat;
   mask: var(--icon) center / contain no-repeat;
 }
-.nav-btn:hover { background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
-.nav-btn.on { background: color-mix(in srgb, var(--accent) 26%, var(--panel)); color: var(--text); }
-.nav-last { margin-top: auto; }
-.rail-toggle {
-  padding: 8px 4px;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--muted);
-  --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M15 6l-6 6 6 6'/></svg>");
-}
-.rail-toggle::before { width: 18px; height: 18px; }
-.side .rail-toggle { margin-bottom: 8px; }
-.rail-toggle:hover { background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
-.rail-folded .side { width: 60px; }
-.rail-folded .nav-btn { font-size: 0; gap: 0; padding: 12px 4px; }
-.rail-folded .rail-toggle { transform: scaleX(-1); }
-.rail-folded .side .logo img { width: 28px; height: 28px; }
+.nav-last.on { color: var(--accent); }
 [data-nav="share"] { --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M3 19h.01M7 19a4 4 0 0 0-4-4M11 19a8 8 0 0 0-8-8M15 19h3a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3H6a3 3 0 0 0-3 2.8'/></svg>"); }
 [data-nav="watch"] { --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M2 12c2.7-4.7 6-7 10-7s7.3 2.3 10 7c-2.7 4.7-6 7-10 7s-7.3-2.3-10-7'/><circle cx='12' cy='12' r='3'/></svg>"); }
 [data-nav="devices"] { --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><rect x='13' y='8' width='8' height='12' rx='1.5'/><path d='M18 8V5a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h9M7 20h6M16 17h2'/></svg>"); }
 [data-nav="remote"] { --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><path d='M3.6 9h16.8M3.6 15h16.8M11.5 3a17 17 0 0 0 0 18M12.5 3a17 17 0 0 1 0 18'/></svg>"); }
 [data-nav="history"] { --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M12 8v4l2 2'/><path d='M3.05 11a9 9 0 1 1 .5 4M3 20v-5h5'/></svg>"); }
 [data-nav="settings"] { --icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M10.3 4.3c.4-1.8 3-1.8 3.4 0a1.7 1.7 0 0 0 2.6 1.1c1.5-.9 3.3.8 2.4 2.4a1.7 1.7 0 0 0 1 2.5c1.8.4 1.8 3 0 3.4a1.7 1.7 0 0 0-1 2.6c.9 1.5-.9 3.3-2.4 2.4a1.7 1.7 0 0 0-2.6 1c-.4 1.8-3 1.8-3.4 0a1.7 1.7 0 0 0-2.5-1c-1.6.9-3.3-.9-2.4-2.4a1.7 1.7 0 0 0-1.1-2.6c-1.8-.4-1.8-3 0-3.4a1.7 1.7 0 0 0 1.1-2.5c-.9-1.6.8-3.3 2.4-2.4 1 .6 2.3.1 2.5-1.1z'/><circle cx='12' cy='12' r='3'/></svg>"); }
-.topbar { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 0 0; }
+.topbar { display: flex; justify-content: flex-end; gap: 8px; margin-left: auto; flex: none; }
 /* Sharing state and viewer count: quiet pills; red and breathing while live. */
 .topbar .badge {
   gap: 8px;
@@ -959,7 +984,7 @@ select option { background: var(--panel-2); color: var(--text); }
 /* Remote access only exists in the desktop app. */
 body:has(#cloud[hidden]):has(#internet[hidden]):has(#turn[hidden]) [data-nav="remote"] { display: none; }
 .main { flex: 1; min-width: 0; overflow-y: auto; padding: 8px 24px 32px; }
-.main section { max-width: 860px; }
+.main section { max-width: 860px; margin: 0 auto; }
 .main section[hidden] { display: none; }
 /* A line between the parts, not above the first one shown. */
 .remote-panel > .internet { margin-top: 0; padding-top: 0; border-top: 0; }
@@ -1044,14 +1069,10 @@ input.switch:checked { background: var(--accent); }
 input.switch:checked::after { left: 17px; background: var(--on-accent); }
 input.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* A narrow window: the sections go across the top. */
+/* A narrow window: the tabs scroll sideways; the sharing pills drop to the content. */
 @media (max-width: 720px) {
-  .shell { flex-direction: column; }
-  .side, .rail-folded .side { width: auto; flex-direction: row; align-items: center; padding: 6px 8px; border-right: 0; border-bottom: 1px solid var(--panel-2); overflow-x: auto; }
-  .side .logo { padding: 0 6px; }
-  .nav-btn { flex: 1 0 64px; padding: 8px 4px; }
-  .nav-last { margin-top: 0; }
-  .rail-toggle { display: none; }
+  .side { padding: 0 8px; }
+  .side .logo span { display: none; }
   .main { padding: 8px 12px 24px; }
 }
 /* The preview only while sharing; before that it was a large empty box. */

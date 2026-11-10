@@ -1,6 +1,6 @@
 // The computer's window in sections (Share, Watch, Devices, Remote access,
-// History, Settings): the rail on the left shows one at a time, the window
-// opens on the last one used, and the rail can fold to icons only. The "⋯"
+// History, Settings): the tabs across the top show one at a time and the
+// window opens on the last one used. The "⋯"
 // menu next to the sharing buttons holds the less frequent actions and
 // closes after one is picked.
 
@@ -50,21 +50,10 @@
     if (menu.open && !menu.contains(e.target)) menu.open = false;
   });
 
-  // The rail folds to icons only (each keeps its name as a tooltip), remembered.
-  var toggle = $('railToggle');
-  function fold(on) {
-    document.body.classList.toggle('rail-folded', on);
-    var label = t(on ? 'railOpen' : 'railFold');
-    toggle.title = label;
-    toggle.setAttribute('aria-label', label);
-    Array.prototype.forEach.call(buttons, function (b) { b.title = on ? b.textContent : ''; });
-  }
-  toggle.onclick = function () {
-    var on = !document.body.classList.contains('rail-folded');
-    storageSet('ayva-rail-folded', on ? '1' : '0');
-    fold(on);
-  };
-  fold(storageGet('ayva-rail-folded') === '1');
+  // Settings is a gear only; its name stays for screen readers and as a tooltip.
+  var gear = document.querySelector('[data-nav="settings"]');
+  gear.title = gear.textContent;
+  gear.setAttribute('aria-label', gear.textContent);
 
   AyvaTheme.picker($('themes'));
   langPicker($('langSelect'));

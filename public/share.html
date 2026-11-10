@@ -12,28 +12,26 @@
 </head>
 <body class="share-body">
   <div class="shell">
-    <!-- Sections on the left; only the chosen one is shown (sharenav.js) -->
+    <!-- Sections as tabs across the top; only the chosen one is shown (sharenav.js) -->
     <nav class="side">
       <!-- Not a link: in the desktop app there is no Back to return from another page -->
       <div class="logo" title="Ayva">
-        <img src="/icon.svg" alt="Ayva" width="34" height="34">
+        <img src="/icon.svg" alt="" width="24" height="24"><span>Ayva</span>
       </div>
-      <!-- Folds the rail to icons only, or opens it again -->
-      <button id="railToggle" class="rail-toggle" type="button"></button>
       <button class="nav-btn" data-nav="share" data-i18n="navShare"></button>
       <button class="nav-btn" data-nav="watch" data-i18n="navWatch"></button>
       <button class="nav-btn" data-nav="devices" data-i18n="navDevices"></button>
       <button class="nav-btn" data-nav="remote" data-i18n="navRemote"></button>
       <button class="nav-btn" data-nav="history" data-i18n="navHistory"></button>
-      <button class="nav-btn nav-last" data-nav="settings" data-i18n="navSettings"></button>
-    </nav>
-
-    <main class="main">
       <!-- Whether this computer is sharing, and to how many -->
       <div class="topbar">
         <span id="liveBadge" class="badge"><span class="dot"></span><span id="liveText"></span></span>
         <span class="badge viewers-badge"><span data-i18n="viewers"></span><span id="viewerCount" class="count">0</span></span>
       </div>
+      <button class="nav-btn nav-last" data-nav="settings" data-i18n="navSettings"></button>
+    </nav>
+
+    <main class="main">
       <section data-section="share">
         <div class="panel">
           <div class="row">

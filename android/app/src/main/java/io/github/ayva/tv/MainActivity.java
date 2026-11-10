@@ -114,9 +114,9 @@ public class MainActivity extends Activity implements Discovery.Listener, Update
     // ---- Colour theme ----
 
     private String theme() {
-        String t = prefs().getString("theme", "quince");
+        String t = prefs().getString("theme", "midnight");
         for (String name : THEMES) if (name.equals(t)) return t;
-        return "quince";
+        return "midnight";
     }
 
     private static void useTheme(String name) {

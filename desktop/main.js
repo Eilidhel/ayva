@@ -586,7 +586,7 @@ function createWindow(port) {
     minWidth: 520,
     minHeight: 480,
     show: !STARTED_HIDDEN,
-    backgroundColor: '#16130e',
+    backgroundColor: '#1b1035',
     title: 'Ayva',
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {

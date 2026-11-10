@@ -16,9 +16,10 @@ var AyvaTheme = (function () {
     if (fixed) return fromApp;
     try {
       var v = localStorage.getItem(KEY);
-      return NAMES.indexOf(v) > 0 ? v : 'quince';
+      // Unset means the default, Midnight; Quince stays for those who picked it.
+      return NAMES.indexOf(v) >= 0 ? v : 'midnight';
     } catch (e) {
-      return 'quince';
+      return 'midnight';
     }
   }
 
