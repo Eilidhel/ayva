@@ -44,7 +44,7 @@ var AyvaTheme = (function () {
   // Each dot shows its theme's three colours: page, panels, accent.
   var SWATCH = {
     midnight: 'conic-gradient(#19f5d6 0 36deg, #2c1d55 36deg 144deg, #1b1035 144deg)',
-    chalk: 'conic-gradient(#2b5bff 0 36deg, #232427 36deg 144deg, #eeede8 144deg)',
+    chalk: 'conic-gradient(#bfff00 0 36deg, #2a3439 36deg 144deg, #eef2f6 144deg)',
     butter: 'conic-gradient(#1f4fd8 0 36deg, #382a22 36deg 144deg, #f3dc88 144deg)',
     sage: 'conic-gradient(#ce5b22 0 36deg, #f1ead9 36deg 144deg, #9eaf8e 144deg)'
   };

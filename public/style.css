@@ -22,12 +22,14 @@
   --ok: #7cc46e;
   --radius: 14px;
 }
-/* Chalk white, graphite black, electric blue. */
+/* Frost white, gunmetal grey, laser lime. */
 [data-theme="chalk"] {
-  --bg: #eeede8; --bar: #232427; --panel: #232427; --panel-2: #2e2f33; --panel-3: #3a3b40;
-  --text: #eeede8; --muted: #a3a4a8; --ink: #232427; --ink-muted: #5f6064;
-  --accent: #2b5bff; --accent-2: #1f49e0; --on-accent: #ffffff;
+  --bg: #eef2f6; --bar: #2a3439; --panel: #2a3439; --panel-2: #344047; --panel-3: #3f4c54;
+  --text: #eef2f6; --muted: #a5b0b7; --ink: #2a3439; --ink-muted: #5b666d;
+  --accent: #bfff00; --accent-2: #a8e600; --on-accent: #1e2529;
 }
+/* Lime is too pale for a focus ring on the white page: there it is gunmetal. */
+[data-theme="chalk"] :is(.overlay, [data-section="share"] > .panel:first-child) :focus-visible { outline-color: var(--ink); }
 /* Butter yellow, espresso brown, cobalt blue. */
 [data-theme="butter"] {
   --bg: #f3dc88; --bar: #382a22; --panel: #382a22; --panel-2: #45352c; --panel-3: #554238;
@@ -43,7 +45,7 @@
 }
 [data-theme="sage"] :is(.error, .bad) { color: #b0261c; }
 /* Blue on the dark panels is too dim to read as link text. */
-:is([data-theme="chalk"], [data-theme="butter"]) .steps a { color: var(--text); }
+[data-theme="butter"] .steps a { color: var(--text); }
 
 * { box-sizing: border-box; }
 
