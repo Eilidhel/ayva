@@ -17,19 +17,19 @@ const outputs = [
   },
   {
     file: 'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png', width: 192, height: 192,
-    html: `<div style="width:192px;height:192px;background:#16130e;border-radius:36px;display:flex;align-items:center;justify-content:center">
+    html: `<div style="width:192px;height:192px;background:#3a2b66;border-radius:36px;display:flex;align-items:center;justify-content:center">
              <img src="${svgUrl}" style="width:150px;height:150px"></div>`,
   },
   {
     file: 'android/app/src/main/res/drawable-xhdpi/banner.png', width: 320, height: 180,
-    html: `<div style="width:320px;height:180px;background:#16130e;display:flex;align-items:center;justify-content:center;gap:14px;font-family:'Segoe UI',sans-serif">
+    html: `<div style="width:320px;height:180px;background:#3a2b66;display:flex;align-items:center;justify-content:center;gap:14px;font-family:'Segoe UI',sans-serif">
              <img src="${svgUrl}" style="width:96px;height:96px">
              <span style="color:#f2c14e;font-size:44px;font-weight:700;letter-spacing:0.5px">Ayva</span></div>`,
   },
   {
     // iPhone "Add to Home Screen" icon: full square, iOS rounds the corners.
     file: 'public/apple-touch-icon.png', width: 180, height: 180,
-    html: `<div style="width:180px;height:180px;background:#16130e;display:flex;align-items:center;justify-content:center">
+    html: `<div style="width:180px;height:180px;background:#3a2b66;display:flex;align-items:center;justify-content:center">
              <img src="${svgUrl}" style="width:140px;height:140px"></div>`,
   },
 ];
@@ -41,7 +41,7 @@ app.whenReady().then(async () => {
     const win = new BrowserWindow({
       // Opaque images render text without fringes; only the app icon needs transparency.
       width: out.width, height: out.height, show: false, frame: false, transparent: !!out.transparent,
-      backgroundColor: out.transparent ? '#00000000' : '#16130e',
+      backgroundColor: out.transparent ? '#00000000' : '#3a2b66',
       webPreferences: { offscreen: true },
     });
     // Long data: URLs fail to load, so go through a temporary file.
