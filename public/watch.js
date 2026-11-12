@@ -790,7 +790,15 @@ wake();
 
 // ---- Start ----
 
-loadConfig().then(function (cfg) {
+// The scripts after this one (cloud.js, control.js...) may still be loading on
+// a slow network when /config.json arrives: start only once they all ran.
+var pageReady = new Promise(function (resolve) {
+  if (document.readyState !== 'loading') resolve();
+  else document.addEventListener('DOMContentLoaded', resolve);
+});
+
+Promise.all([loadConfig(), pageReady]).then(function (all) {
+  var cfg = all[0];
   config = cfg;
   CLOUD = !!cfg.cloud;
   signal = new Signal({

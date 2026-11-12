@@ -721,6 +721,9 @@ function handleViewerRequest(req) {
     return;
   }
   requests.push(req);
+  // Logged now, not only when answered: a request nobody was here to answer
+  // (the user away from the computer) still shows in the history.
+  logEvent('asked', req);
   if (requests.length === 1) showNextRequest();
 }
 
@@ -3416,7 +3419,7 @@ if (window.ayva && window.ayva.turnStatus) {
 
 var HISTORY_MAX = 300;
 var HISTORY_TEXT = {
-  joined: 'histJoined', left: 'histLeft', allowed: 'histAllowed', denied: 'histDenied',
+  joined: 'histJoined', left: 'histLeft', asked: 'histAsked', allowed: 'histAllowed', denied: 'histDenied',
   kicked: 'histKicked', proofFailed: 'histProofFailed', pinWrong: 'histPinWrong',
   pinLocked: 'histPinLocked', remoteStart: 'remoteStarted', remoteStop: 'remoteStopped',
   remoteFailed: 'histRemoteFailed', recording: 'histRecording', talking: 'histTalking',
@@ -3435,7 +3438,7 @@ function logEvent(event, info, ms, what, cause) {
   var entry = { at: Date.now(), e: event, who: deviceLabel(info) };
   if (what) entry.what = what;
   if (cause) entry.cause = cause;
-  if (event === 'joined') entry.via = info && info.remote ? 'internet' : 'lan';
+  if (event === 'joined' || event === 'asked') entry.via = info && info.remote ? 'internet' : 'lan';
   if (ms) entry.ms = ms;
   connHistory.push(entry);
   if (connHistory.length > HISTORY_MAX) connHistory = connHistory.slice(-HISTORY_MAX);
