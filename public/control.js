@@ -204,10 +204,25 @@ var Control = (function () {
     kb.focus();
   };
 
-  // Keys a phone keyboard doesn't have.
+  // Copy and paste on the computer without a right click: Ctrl+C / Ctrl+V.
+  function ctrlKey(code) {
+    send({ t: 'key', code: 'ControlLeft', down: true });
+    send({ t: 'key', code: code });
+    send({ t: 'key', code: 'ControlLeft', down: false });
+  }
+  function paste() {
+    // In the app, what was copied on this phone goes first, so that is what
+    // gets pasted; the short wait lets it reach the computer's clipboard.
+    if (window.Inbox && Inbox.clipCheck) Inbox.clipCheck();
+    setTimeout(function () { ctrlKey('KeyV'); }, 300);
+  }
+
+  // Keys a phone keyboard doesn't have, then copy and paste.
   var bar = $('kbBar');
   [['Esc', 'Escape'], ['Tab', 'Tab'], ['←', 'ArrowLeft'], ['↑', 'ArrowUp'], ['↓', 'ArrowDown'],
-    ['→', 'ArrowRight'], ['⌫', 'Backspace'], ['Win', 'MetaLeft']].forEach(function (k) {
+    ['→', 'ArrowRight'], ['⌫', 'Backspace'], ['Win', 'MetaLeft'],
+    [t('copy'), function () { ctrlKey('KeyC'); }], [t('paste'), paste]].forEach(function (k) {
+    var press = typeof k[1] === 'function' ? k[1] : function () { send({ t: 'key', code: k[1] }); };
     var b = document.createElement('button');
     b.type = 'button';
     b.className = 'secondary';
@@ -216,9 +231,9 @@ var Control = (function () {
     b.addEventListener('mousedown', function (e) { e.preventDefault(); });
     b.addEventListener('touchstart', function (e) {
       e.preventDefault();
-      send({ t: 'key', code: k[1] });
+      press();
     }, { passive: false });
-    b.onclick = function () { send({ t: 'key', code: k[1] }); };
+    b.onclick = press;
     bar.appendChild(b);
   });
   var hide = document.createElement('button');

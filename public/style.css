@@ -258,7 +258,9 @@ select option { background: var(--panel-2); color: var(--text); }
 .devices > .device .device-name { font-weight: 600; }
 .devices > .device .tag { margin: 6px 6px 0 0; display: inline-block; }
 .devices > .device > .row { gap: 8px; margin-top: auto; }
-.devices > .device-card:has(.card-body:not([hidden])) { grid-column: 1 / -1; }
+.devices > .device-card:has(.card-body:not([hidden])) { grid-column: 1 / -1; flex-direction: row; align-items: center; }
+.devices > .device-card:has(.card-body:not([hidden])) > .device-name { flex: 1; }
+.devices > .device-card:has(.card-body:not([hidden])) > .row { margin-top: 0; }
 .devices > :not(.device) { grid-column: 1 / -1; }
 
 /* Share, before sharing: one centred card with a large cast mark over the button. */
@@ -994,12 +996,20 @@ body:has(#cloud[hidden]):has(#internet[hidden]):has(#turn[hidden]) [data-nav="re
 
 /* A remembered device: name and tags, then its rights folded open. */
 .device.device-card { flex-wrap: wrap; }
-.card-body { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 24px; padding: 10px 2px 2px; border-top: 1px solid var(--panel-3); margin-top: 4px; }
+/* Open: name and buttons on one line; under it one line per group of rights,
+   with PIN and Forget at the right, so the card stays short. */
+.card-body { flex-basis: 100%; display: grid; grid-template-columns: 1fr auto; gap: 10px 24px; align-items: center; padding: 12px 2px 2px; border-top: 1px solid var(--panel-3); margin-top: 10px; }
 .card-body[hidden] { display: none; }
-.rights { display: flex; flex-direction: column; gap: 8px; }
-.rights-title { margin-bottom: 2px; }
-.right { gap: 10px; cursor: pointer; flex-wrap: nowrap; }
-.pin-actions { grid-column: 1 / -1; justify-content: flex-end; }
+.rights { grid-column: 1; position: relative; padding-left: 150px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.rights-title { position: absolute; left: 0; top: 2px; }
+.right { gap: 8px; cursor: pointer; flex-wrap: nowrap; }
+.pin-actions { grid-column: 2; grid-row: 1 / span 2; align-self: end; flex-wrap: nowrap; }
+@media (max-width: 720px) {
+  .card-body { grid-template-columns: 1fr; }
+  .rights { padding-left: 0; }
+  .rights-title { position: static; flex-basis: 100%; }
+  .pin-actions { grid-column: 1; grid-row: auto; justify-content: flex-end; }
+}
 .pin-actions .forget { color: var(--live); }
 .card-toggle[aria-expanded="true"] { background: var(--panel-3); }
 
