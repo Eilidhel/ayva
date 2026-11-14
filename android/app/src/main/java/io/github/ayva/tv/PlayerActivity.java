@@ -4,6 +4,8 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.UiModeManager;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -22,6 +24,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -178,6 +181,18 @@ public class PlayerActivity extends Activity {
                     () -> origin != null && origin.equals(currentOrigin) ? proofOrigin : null), "AyvaKey");
         }
         web.addJavascriptInterface(new FileSaver(this), "AyvaFiles");
+        // Text copied on the computer lands on this device's clipboard
+        // (public/inbox.js); a page cannot do that itself without a tap.
+        web.addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public boolean set(String text) {
+                if (text == null || origin == null || !origin.equals(currentOrigin)) return false;
+                ClipboardManager cb = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                if (cb == null) return false;
+                cb.setPrimaryClip(ClipData.newPlainText("Ayva", text));
+                return true;
+            }
+        }, "AyvaClip");
         addScreenBridge();
         FrameLayout root = new FrameLayout(this);
         root.addView(web);

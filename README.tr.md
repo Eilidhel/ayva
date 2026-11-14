@@ -8,7 +8,7 @@ Bilgisayarda Ayva'yı aç ve **Paylaşımı başlat**a bas. TV uygulaması bilgi
 - **TV'de yazı yazmak yok:** Android TV uygulaması ağdaki bilgisayarları bulur ve kendiliğinden bağlanır.
 - **Her yerden:** internet erişimini aç, telefonla QR kodu okut. Hesap ya da modem ayarı gerekmez.
 - **Uzaktan kontrol:** bilgisayarın faresini ve klavyesini telefondan (touchpad), TV kumandasından ya da başka bir bilgisayarın tarayıcısından kullan.
-- **Dosya ve pano:** bilgisayar ile telefon arasında dosya ve yazı gönder.
+- **Dosya ve pano:** bilgisayar ile telefon arasında dosya ve yazı gönder. Bilgisayarda kopyaladığın yazı, kontrol izni olan telefonun panosuna kendiliğinden gelir.
 - **Telefon bilgisayarda:** Android telefonun ekranını ve sesini ya da herhangi bir telefonun kamerasını bilgisayarda bir pencerede göster, telefonu fareyle kullan.
 - **Kimin bağlanacağına sen karar verirsin:** yeni cihazlar bilgisayarda onaylanmadan bağlanamaz. Hatırlanan cihazlar sormadan bağlanır, istediğin cihazın bağlantısını tek tıkla kesebilirsin.
 - **Doğrudan bağlantı:** görüntü WebRTC ile doğrudan bilgisayardan izleyen cihaza gider. 1440p 60 FPS'e kadar, sesli.

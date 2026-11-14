@@ -8,7 +8,7 @@ Open Ayva on your computer and press **Start sharing**. The TV app finds the com
 - **Zero typing on the TV:** the Android TV app finds computers on your network and connects automatically.
 - **From anywhere:** turn on internet access and scan the QR code on your phone. No account and no router setup.
 - **Remote control:** use the computer's mouse and keyboard from your phone (touchpad), the TV remote, or another computer's browser.
-- **Files and clipboard:** send files and text between the computer and your phone.
+- **Files and clipboard:** send files and text between the computer and your phone. Text copied on the computer lands by itself on the clipboard of a phone that may control it.
 - **The phone on the computer:** show an Android phone's screen and sound, or any phone's camera, in a window on the computer, and use the phone with the mouse.
 - **You decide who connects:** new devices must be approved on the computer. Remembered devices connect without asking, and anyone can be disconnected with one click.
 - **Peer-to-peer:** video goes straight from your computer to the viewer over WebRTC, at up to 1440p 60 FPS with sound.

@@ -162,6 +162,7 @@ function openTransferChannel(id, pc) {
           return;
         }
         var text = msg.text.slice(0, 100000);
+        lastClip = text; // not sent back as if it had been copied here
         var done = window.ayva ? window.ayva.setClipboard(text) : copyText(text);
         Promise.resolve(done).then(function () {
           transferStatus(t('clipReceived').replace('{who}', who()));
@@ -259,6 +260,34 @@ function sendClipboard() {
     transferStatus(t('clipSent'));
   }).catch(function () { transferStatus(t('clipEmpty')); });
 }
+
+// Text copied on this computer goes by itself to the devices that may control
+// it (they could read it with the keyboard anyway); the rest get the clipboard
+// only by the button. What was copied before such a device was there stays.
+var lastClip = null; // null: nobody to send to at the last look
+
+function clipTargets() {
+  return fileTargets().filter(controlAllowed);
+}
+
+function watchClipboard() {
+  if (!clipTargets().length) {
+    lastClip = null;
+    return;
+  }
+  window.ayva.getClipboard().then(function (text) {
+    var first = lastClip === null;
+    if (text === lastClip) return;
+    lastClip = text;
+    if (first || !text) return;
+    clipTargets().forEach(function (id) {
+      transfers[id].send({ t: 'clip', text: text.slice(0, 100000), auto: true });
+    });
+  });
+}
+
+// shortcut: polls, Electron has no clipboard-changed event; fine at 1 s.
+if (window.ayva && window.ayva.getClipboard) setInterval(watchClipboard, 1000);
 
 // ---- Remote control ----
 // Each viewer gets a "control" data channel. Its messages are handed to the
@@ -824,6 +853,20 @@ function proofOriginOk(origin, remote) {
   return own.indexOf(o) >= 0;
 }
 
+// The Android app's id used to differ per address (home, internet) and now
+// comes from its key: a device remembered under an old id, proven by the same
+// key, keeps its entry (name, rights, PIN, pairing) under the new one.
+function adoptByKey(deviceId, key) {
+  var old = trusted.filter(function (d) { return d.key === key && d.id !== deviceId; });
+  if (!old.length) return null;
+  var keep = old[0];
+  trusted = trusted.filter(function (d) { return old.indexOf(d) < 0 || d === keep; });
+  if (deviceNames[keep.id] && !deviceNames[deviceId]) setDeviceName(deviceId, deviceNames[keep.id]);
+  keep.id = deviceId;
+  saveTrusted();
+  return keep;
+}
+
 function checkProof(id, data) {
   var p = proving[id];
   if (!p) return;
@@ -852,6 +895,7 @@ function checkProof(id, data) {
     clearTimeout(p.timer);
     delete proving[id];
     if (deviceId && valid) {
+      if (!entry) entry = adoptByKey(deviceId, data.key);
       if (approvedThisRun[deviceId]) approvedThisRun[deviceId] = data.key;
       if (deviceId in rememberOnProof) {
         if (entry) entry.key = data.key;

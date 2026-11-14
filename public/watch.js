@@ -322,8 +322,9 @@ $('remoteStopBtn').onclick = function () {
 var accessKey = null; // from internet links; required by the computer over the tunnel
 
 // A stable random id lets the computer remember this device; the name is what
-// the computer shows when asking whether to let it in.
-var deviceId = storageGet('ayva-device-id');
+// the computer shows when asking whether to let it in. The Android app's id
+// comes from its Keystore key, so home and internet addresses share it.
+var deviceId = DeviceKey.nativeId() || storageGet('ayva-device-id');
 if (!deviceId) {
   deviceId = Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(16)), function (b) {
     return ('0' + b.toString(16)).slice(-2);

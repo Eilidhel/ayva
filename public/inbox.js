@@ -15,7 +15,10 @@ var Inbox = (function () {
   function attach(dc) {
     transfer = new Transfer(dc, {
       message: function (msg) {
-        if (msg.t === 'clip' && typeof msg.text === 'string') addText(msg.text);
+        if (msg.t === 'clip' && typeof msg.text === 'string') {
+          if (msg.auto) autoCopy(msg.text);
+          else addText(msg.text);
+        }
         else if (msg.t === 'refused') note(t('refusedByComputer'));
       },
       fileStart: function (meta) {
@@ -129,6 +132,21 @@ var Inbox = (function () {
     item(t('clipFromComputer') + ': ' + preview, t('copy'), function (b) {
       copyText(text).then(function () { b.textContent = t('copied'); });
     });
+  }
+
+  // Text the computer sent by itself when it was copied there: straight onto
+  // this device's clipboard. A browser may refuse without a tap (the app's
+  // AyvaClip never does); then it waits in the inbox with a Copy button.
+  function autoCopy(text) {
+    var done;
+    try {
+      done = window.AyvaClip
+        ? (window.AyvaClip.set(text) ? Promise.resolve() : Promise.reject(new Error('refused')))
+        : copyText(text);
+    } catch (e) {
+      done = Promise.reject(e);
+    }
+    done.then(function () { note(t('clipAutoCopied')); }, function () { addText(text); });
   }
 
   // ---- Sending to the computer ----

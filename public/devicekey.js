@@ -140,5 +140,14 @@ var DeviceKey = (function () {
     }).catch(function () { return null; });
   }
 
-  return { available: available, prove: prove, sha256: sha256, PREFIX: PREFIX };
+  // In the Android app: an id derived from the Keystore key, so the device is
+  // the same one at every address (home and internet) instead of one id per
+  // address's storage. The id alone proves nothing; the key's signature does.
+  // null outside the app or when the key is unreachable.
+  function nativeId() {
+    if (!native || !native.sha256) return null;
+    try { return native.sha256('ayva-device-id:' + native.publicKey()).slice(0, 32); } catch (e) { return null; }
+  }
+
+  return { available: available, prove: prove, sha256: sha256, nativeId: nativeId, PREFIX: PREFIX };
 })();
