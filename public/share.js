@@ -157,6 +157,9 @@ function openTransferChannel(id, pc) {
         if (batch && window.ayva) finishBatch(batch.key);
         batch = null;
       } else if (msg.t === 'clip' && typeof msg.text === 'string') {
+        // What a phone sent by itself is dropped quietly; what its user sent
+        // by hand gets an answer.
+        if (msg.auto && !(autoClipOn() && controlAllowed(id))) return;
         if (!controlAllowed(id)) {
           transfers[id].send({ t: 'refused' });
           return;
@@ -270,8 +273,12 @@ function clipTargets() {
   return fileTargets().filter(controlAllowed);
 }
 
+function autoClipOn() {
+  return storageGet('ayva-auto-clip') !== 'off';
+}
+
 function watchClipboard() {
-  if (!clipTargets().length) {
+  if (!autoClipOn() || !clipTargets().length) {
     lastClip = null;
     return;
   }
@@ -3630,6 +3637,14 @@ function renderUpdate(s) {
 if (window.ayva && window.ayva.updateStatus) {
   window.ayva.updateStatus().then(renderUpdate);
   window.ayva.onUpdateState(renderUpdate);
+}
+
+if (window.ayva && window.ayva.getClipboard) {
+  $('autoClipRow').hidden = false;
+  $('autoClip').checked = autoClipOn();
+  $('autoClip').onchange = function () {
+    storageSet('ayva-auto-clip', this.checked ? 'on' : 'off');
+  };
 }
 
 if (window.ayva && window.ayva.getStartWithWindows) {

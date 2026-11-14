@@ -6,6 +6,7 @@
 var Inbox = (function () {
   var transfer = null;
   var parts = [];
+  var lastClip = null; // this device's clipboard at the last look; null: not looked yet
 
   function setOpen(open) {
     document.body.classList.toggle('transfer-on', open);
@@ -38,6 +39,7 @@ var Inbox = (function () {
       // The TV app can't save files, so it doesn't offer to receive them.
       transfer.send({ t: 'hello', files: !APP });
       setOpen(true);
+      clipCheck(); // what is on the clipboard now is not news
     };
     dc.onclose = function () {
       if (transfer && transfer.dc === dc) detach();
@@ -47,6 +49,7 @@ var Inbox = (function () {
   function detach() {
     transfer = null;
     parts = [];
+    lastClip = null;
     setOpen(false);
   }
 
@@ -146,7 +149,25 @@ var Inbox = (function () {
     } catch (e) {
       done = Promise.reject(e);
     }
-    done.then(function () { note(t('clipAutoCopied')); }, function () { addText(text); });
+    done.then(function () {
+      lastClip = text; // not sent back as if it had been copied here
+      note(t('clipAutoCopied'));
+    }, function () { addText(text); });
+  }
+
+  // The other way: the Android app calls this when it comes to the front
+  // (Android lets an app read the clipboard only then). Text copied on this
+  // device since the last look goes to the computer, which takes it only from
+  // a device that may control it.
+  // shortcut: app only, a browser cannot read the clipboard without asking.
+  function clipCheck() {
+    if (!transfer || !window.AyvaClip || !window.AyvaClip.get) return;
+    var text = window.AyvaClip.get();
+    var first = lastClip === null;
+    if (text === lastClip) return;
+    lastClip = text;
+    if (first || !text) return;
+    transfer.send({ t: 'clip', text: text.slice(0, 100000), auto: true });
   }
 
   // ---- Sending to the computer ----
@@ -192,5 +213,5 @@ var Inbox = (function () {
     note(t('clipSentToComputer'));
   };
 
-  return { attach: attach, detach: detach, addFile: addFile };
+  return { attach: attach, detach: detach, addFile: addFile, clipCheck: clipCheck };
 })();

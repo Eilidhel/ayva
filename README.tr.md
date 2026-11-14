@@ -5,10 +5,12 @@ Bilgisayarda Ayva'yı aç ve **Paylaşımı başlat**a bas. TV uygulaması bilgi
 
 [English](README.md)
 
+![Bilgisayarda ve telefonda Ayva](docs/demo.gif)
+
 - **TV'de yazı yazmak yok:** Android TV uygulaması ağdaki bilgisayarları bulur ve kendiliğinden bağlanır.
 - **Her yerden:** internet erişimini aç, telefonla QR kodu okut. Hesap ya da modem ayarı gerekmez.
 - **Uzaktan kontrol:** bilgisayarın faresini ve klavyesini telefondan (touchpad), TV kumandasından ya da başka bir bilgisayarın tarayıcısından kullan.
-- **Dosya ve pano:** bilgisayar ile telefon arasında dosya ve yazı gönder. Bilgisayarda kopyaladığın yazı, kontrol izni olan telefonun panosuna kendiliğinden gelir.
+- **Dosya ve pano:** bilgisayar ile telefon arasında dosya ve yazı gönder. Bilgisayarda kopyaladığın yazı, kontrol izni olan telefonun panosuna kendiliğinden gelir. Telefonda kopyaladığın yazı da Ayva uygulamasına döndüğünde bilgisayara gider. Ayarlar'daki bir düğme bunu kapatır.
 - **Telefon bilgisayarda:** Android telefonun ekranını ve sesini ya da herhangi bir telefonun kamerasını bilgisayarda bir pencerede göster, telefonu fareyle kullan.
 - **Kimin bağlanacağına sen karar verirsin:** yeni cihazlar bilgisayarda onaylanmadan bağlanamaz. Hatırlanan cihazlar sormadan bağlanır, istediğin cihazın bağlantısını tek tıkla kesebilirsin.
 - **Doğrudan bağlantı:** görüntü WebRTC ile doğrudan bilgisayardan izleyen cihaza gider. 1440p 60 FPS'e kadar, sesli.
@@ -245,6 +247,15 @@ Sunucu masaüstü programı olmadan da çalışır (uzaktan kontrol, internet er
 1. [Node.js](https://nodejs.org) 18 veya üstünü kur.
 2. Projeyi indir ve `start.bat`'a çift tıkla (Windows), ya da `npm install` ardından `npm start` çalıştır.
 3. Bilgisayarda **http://localhost:3000/share** adresini aç. TV'de orada yazan adresi aç.
+
+## Kod imzalama politikası
+
+Windows kurulum dosyası bu depodan GitHub Actions ile derlenir (`.github/workflows/build.yml`); başka yerde derlenen hiçbir şey yayınlanmaz.
+
+- Kod yazanlar ve inceleyenler: [Eilidhel](https://github.com/Eilidhel)
+- Onaylayanlar: [Eilidhel](https://github.com/Eilidhel)
+
+Ayva geliştiricisine hiçbir şey göndermez; bkz. [gizlilik politikası](PRIVACY.md).
 
 ## Lisans
 

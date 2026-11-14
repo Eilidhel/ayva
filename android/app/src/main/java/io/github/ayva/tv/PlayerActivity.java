@@ -192,6 +192,22 @@ public class PlayerActivity extends Activity {
                 cb.setPrimaryClip(ClipData.newPlainText("Ayva", text));
                 return true;
             }
+
+            // Text copied on this device, for the computer. Empty when there
+            // is none or Android refuses (the app is not in front).
+            @JavascriptInterface
+            public String get() {
+                if (origin == null || !origin.equals(currentOrigin)) return "";
+                ClipboardManager cb = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                try {
+                    ClipData clip = cb == null ? null : cb.getPrimaryClip();
+                    CharSequence text = clip == null || clip.getItemCount() == 0 ? null : clip.getItemAt(0).getText();
+                    if (text == null) return "";
+                    return text.length() > 100000 ? text.subSequence(0, 100000).toString() : text.toString();
+                } catch (RuntimeException e) {
+                    return "";
+                }
+            }
         }, "AyvaClip");
         addScreenBridge();
         FrameLayout root = new FrameLayout(this);
@@ -386,7 +402,10 @@ public class PlayerActivity extends Activity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) hideSystemUi();
+        if (hasFocus) {
+            hideSystemUi();
+            if (web != null) web.evaluateJavascript("window.Inbox&&Inbox.clipCheck&&Inbox.clipCheck()", null);
+        }
     }
 
     @Override
